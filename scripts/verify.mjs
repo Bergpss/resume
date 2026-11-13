@@ -374,6 +374,9 @@ const checks = [
       if (FACTS.work.company !== "北京南北天地科技股份有限公司") {
         problems.push(`company is ${FACTS.work.company}`);
       }
+      if (FACTS.work.companyEn !== "Beijing Snsoft Technology Co.,Ltd") {
+        problems.push(`companyEn is ${FACTS.work.companyEn}`);
+      }
       if (FACTS.work.start !== "2022-09") {
         problems.push(`start is ${FACTS.work.start}`);
       }
@@ -393,8 +396,16 @@ const checks = [
         if (actual.company !== expected.company) {
           problems.push(`${locale} company is ${actual.company}`);
         }
-        if (actual.company !== FACTS.work.company) {
+        const official =
+          locale === "en" ? FACTS.work.companyEn : FACTS.work.company;
+        if (actual.company !== official) {
           problems.push(`${locale} invented a company name: ${actual.company}`);
+        }
+        if (locale === "zh" && actual.company === FACTS.work.companyEn) {
+          problems.push("zh work uses the English company name");
+        }
+        if (locale === "en" && actual.company === FACTS.work.company) {
+          problems.push("en work still uses the Chinese company name");
         }
         if (actual.title !== expected.title) {
           problems.push(`${locale} title is ${actual.title}`);
@@ -859,11 +870,10 @@ const checks = [
             "至今",
             "Present",
             "2022-09 - 2025-05",
-            "Co., Ltd",
-            "Co.,Ltd",
-            "Limited",
             "Nanbei",
             "Tiandi Technology",
+            "Tiandi Science",
+            "TDTEC",
             "CET-4",
             "CET4",
             "四级",
