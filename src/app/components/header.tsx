@@ -4,12 +4,13 @@ import type React from "react";
 import { GitHubIcon } from "@/components/icons/github-icon";
 import { LinkedInIcon } from "@/components/icons/linkedin-icon";
 import { XIcon } from "@/components/icons/x-icon";
-import { RESUME_DATA } from "@/data/resume-data";
+import type { Locale } from "@/lib/i18n";
 import {
   type ContactIcon,
   type ContactLink,
   getContactLinks,
 } from "@/lib/resume";
+import type { ResumeData } from "@/lib/types";
 
 const ICON_MAP: Record<
   ContactIcon,
@@ -98,8 +99,13 @@ function PrintContact({ links }: ContactLinksProps) {
   );
 }
 
-export function Header() {
-  const contactLinks = getContactLinks(RESUME_DATA);
+interface HeaderProps {
+  data: ResumeData;
+  locale: Locale;
+}
+
+export function Header({ data, locale }: HeaderProps) {
+  const contactLinks = getContactLinks(data, locale);
 
   return (
     <header className="flex items-center justify-between gap-x-4">
@@ -108,30 +114,37 @@ export function Header() {
           className="font-pixel text-[28px] leading-none sm:text-[32px]"
           id="resume-name"
         >
-          {RESUME_DATA.name}
+          {data.name}
         </h1>
         <p className="max-w-md text-pretty text-sm text-body print:text-[12px] print:leading-tight">
-          {RESUME_DATA.about}
+          {data.about}
         </p>
 
-        <LocationLink
-          location={RESUME_DATA.location}
-          locationLink={RESUME_DATA.locationLink}
-        />
+        {data.location && data.locationLink ? (
+          <LocationLink
+            location={data.location}
+            locationLink={data.locationLink}
+          />
+        ) : null}
 
-        <ContactButtons links={contactLinks} />
-
-        <PrintContact links={contactLinks} />
+        {contactLinks.length > 0 ? (
+          <>
+            <ContactButtons links={contactLinks} />
+            <PrintContact links={contactLinks} />
+          </>
+        ) : null}
       </div>
 
-      <Image
-        className="size-28 shrink-0 rounded-xl bg-muted object-cover ring-1 ring-muted"
-        src={RESUME_DATA.avatar}
-        alt={`${RESUME_DATA.name}'s profile picture`}
-        width={112}
-        height={112}
-        preload={true}
-      />
+      {data.avatar ? (
+        <Image
+          className="size-28 shrink-0 rounded-xl bg-muted object-cover ring-1 ring-muted"
+          src={data.avatar}
+          alt={`${data.name}'s profile picture`}
+          width={112}
+          height={112}
+          preload={true}
+        />
+      ) : null}
     </header>
   );
 }

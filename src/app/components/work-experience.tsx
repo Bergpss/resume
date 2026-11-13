@@ -2,7 +2,6 @@ import { DateRange } from "@/components/ui/date-range";
 import { ExternalArrow } from "@/components/ui/external-arrow";
 import { Section } from "@/components/ui/section";
 import { TagList } from "@/components/ui/tag-list";
-import { SECTION_TITLES } from "@/data/resume-data";
 import type { WorkEntry } from "@/lib/types";
 
 interface CompanyLinkProps {
@@ -11,6 +10,10 @@ interface CompanyLinkProps {
 }
 
 function CompanyLink({ company, link }: CompanyLinkProps) {
+  if (!link) {
+    return <span>{company}</span>;
+  }
+
   return (
     <a
       className="hover:underline"
@@ -27,9 +30,17 @@ function CompanyLink({ company, link }: CompanyLinkProps) {
 
 interface WorkExperienceItemProps {
   work: WorkEntry;
+  periodLabel: string;
+  presentLabel: string;
+  technologiesLabel: string;
 }
 
-function WorkExperienceItem({ work }: WorkExperienceItemProps) {
+function WorkExperienceItem({
+  work,
+  periodLabel,
+  presentLabel,
+  technologiesLabel,
+}: WorkExperienceItemProps) {
   const { company, link, badges, title, start, end, description, highlights } =
     work;
 
@@ -40,7 +51,12 @@ function WorkExperienceItem({ work }: WorkExperienceItemProps) {
           <h3 className="text-sm font-medium leading-snug print:leading-none">
             <CompanyLink company={company} link={link} />
           </h3>
-          <DateRange start={start} end={end} label="Employment period" />
+          <DateRange
+            start={start}
+            end={end}
+            label={periodLabel}
+            presentLabel={presentLabel}
+          />
         </div>
         <h4 className="text-sm leading-snug text-body print:text-[12px] print:leading-tight">
           {title}
@@ -58,7 +74,7 @@ function WorkExperienceItem({ work }: WorkExperienceItemProps) {
       </div>
       <TagList
         tags={badges}
-        label="Technologies used"
+        label={technologiesLabel}
         className="mt-2 print:mt-0.5"
       />
     </>
@@ -67,18 +83,33 @@ function WorkExperienceItem({ work }: WorkExperienceItemProps) {
 
 interface WorkExperienceProps {
   work: WorkEntry[];
+  title: string;
+  periodLabel: string;
+  presentLabel: string;
+  technologiesLabel: string;
 }
 
-export function WorkExperience({ work }: WorkExperienceProps) {
+export function WorkExperience({
+  work,
+  title,
+  periodLabel,
+  presentLabel,
+  technologiesLabel,
+}: WorkExperienceProps) {
   return (
-    <Section title={SECTION_TITLES.work} titleId="work-experience">
+    <Section title={title} titleId="work-experience">
       <div className="space-y-8 print:space-y-1.5">
         {work.map((item) => (
           <article
             key={`${item.company}-${item.start}`}
             className="print:break-inside-avoid"
           >
-            <WorkExperienceItem work={item} />
+            <WorkExperienceItem
+              work={item}
+              periodLabel={periodLabel}
+              presentLabel={presentLabel}
+              technologiesLabel={technologiesLabel}
+            />
           </article>
         ))}
       </div>

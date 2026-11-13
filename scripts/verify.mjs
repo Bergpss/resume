@@ -1,5 +1,7 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { readdirSync, readFileSync, existsSync } from "node:fs";
 import module from "node:module";
+import { dirname, join } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 if (!module.registerHooks) {
   console.error(
@@ -17,27 +19,48 @@ const loadTypeScriptAsModules = (url, context, nextLoad) =>
     url,
     url.endsWith(".ts") ? { ...context, format: "module-typescript" } : context
   );
+const srcRoot = join(dirname(fileURLToPath(import.meta.url)), "../src");
+const resolveAlias = (specifier, context, nextResolve) => {
+  if (!specifier.startsWith("@/")) return nextResolve(specifier, context);
+  const without = specifier.slice(2);
+  const match = [without, `${without}.ts`, `${without}.tsx`]
+    .map((file) => join(srcRoot, file))
+    .find((file) => existsSync(file));
+  if (!match) return nextResolve(specifier, context);
+  return nextResolve(pathToFileURL(match).href, context);
+};
 module.registerHooks({ load: stubImages });
 module.registerHooks({ load: loadTypeScriptAsModules });
-const { RESUME_DATA, SECTION_TITLES } = await import(
-  "../src/data/resume-data.ts"
+module.registerHooks({ resolve: resolveAlias });
+
+const {
+  EXPECTED_OPENCLAW_HIGHLIGHTS,
+  FACTS,
+  getResumeData,
+  getSectionTitles,
+} = await import("../src/data/resume-data.ts");
+const { DEFAULT_LOCALE, LOCALES, localePath, UI } = await import(
+  "../src/lib/i18n.ts"
 );
 
-const read = (file) =>
-  readFileSync(new URL(`../.next/server/app/${file}`, import.meta.url), "utf8");
+const root = dirname(fileURLToPath(import.meta.url));
+const outDir = join(root, "../out");
+const srcDir = join(root, "../src");
 
-const html = read("index.html");
-const sources = readdirSync(new URL("../src", import.meta.url), {
-  recursive: true,
-})
+const readOut = (file) => {
+  const path = join(outDir, file);
+  if (!existsSync(path)) {
+    throw new Error(`missing build output ${file}`);
+  }
+  return readFileSync(path, "utf8");
+};
+
+const sources = readdirSync(srcDir, { recursive: true })
   .filter((file) => /\.(tsx?|css)$/.test(file))
   .map((file) => [
     file,
-    readFileSync(new URL(`../src/${file}`, import.meta.url), "utf8"),
+    readFileSync(join(srcDir, file), "utf8"),
   ]);
-const jsonLdScripts = [
-  ...html.matchAll(/<script type="application\/ld\+json">(.*?)<\/script>/gs),
-].map(([, json]) => json);
 
 const entities = {
   "&amp;": "&",
@@ -48,12 +71,98 @@ const entities = {
 };
 const decode = (text) =>
   text.replace(/&(?:amp|lt|gt|quot|#x27);/g, (entity) => entities[entity]);
-const meta = (key) =>
-  html.match(
-    new RegExp(`<meta (?:name|property)="${key}" content="([^"]*)"`)
-  )?.[1];
-const isSiteUrl = (url) =>
-  url !== undefined && new URL(url).href === new URL(RESUME_DATA.siteUrl).href;
+
+const pages = Object.fromEntries(
+  LOCALES.map((locale) => {
+    const html = readOut(`${locale}.html`);
+    const styledText = readOut(`${locale}/index.txt`);
+    const text = styledText.replace(/\x1b\[[0-9;]*m/g, "");
+    const markdown = readOut(`${locale}/index.md`);
+    const llms = readOut(`${locale}/llms.txt`);
+    const data = getResumeData(locale);
+    const titles = getSectionTitles(locale);
+    const jsonLdScripts = [
+      ...html.matchAll(
+        /<script type="application\/ld\+json">(.*?)<\/script>/gs
+      ),
+    ].map(([, json]) => json);
+    const headings = [...html.matchAll(/<h2\b[^>]*>(.*?)<\/h2>/gs)].map(
+      ([, heading]) => decode(heading)
+    );
+    const sections = new Map(
+      [
+        ...html.matchAll(
+          /<section\b[^>]*>\s*<h2\b[^>]*>(.*?)<\/h2>(.*?)<\/section>/gs
+        ),
+      ].map(([, heading, body]) => [decode(heading), body])
+    );
+    return [
+      locale,
+      {
+        html,
+        styledText,
+        text,
+        markdown,
+        llms,
+        data,
+        titles,
+        jsonLdScripts,
+        headings,
+        sections,
+      },
+    ];
+  })
+);
+
+const css = readdirSync(join(outDir, "_next/static/chunks"))
+  .filter((file) => file.endsWith(".css"))
+  .map((file) => readOut(`_next/static/chunks/${file}`))
+  .join("\n");
+
+const unescape = (md) => md.replace(/\\([!-/:-@[-`{-~])/g, "$1");
+const site = new URL(FACTS.siteUrl).origin;
+const dimLineAfterBlankLine = /(?<=\n\n) {2}\x1b\[2m([^\x1b\n]+)\x1b\[0m$/gm;
+
+const hasData = (data, key) => data[key].length > 0;
+
+const showing = (page, title) =>
+  [
+    ["page", page.headings, (value) => value],
+    [
+      "text",
+      [...page.styledText.matchAll(dimLineAfterBlankLine)].map(
+        ([, heading]) => heading
+      ),
+      (value) => value.toLowerCase(),
+    ],
+    [
+      "markdown",
+      [...page.markdown.matchAll(/^## (.*)$/gm)].map(([, heading]) =>
+        unescape(heading)
+      ),
+      (value) => value,
+    ],
+  ]
+    .filter(([, found, shown]) => found.includes(shown(title)))
+    .map(([version]) => version);
+
+const articles = (page, key) => {
+  if (!hasData(page.data, key)) return [];
+  const heading = page.titles[key];
+  const section = page.sections.get(heading);
+  if (section === undefined) {
+    throw new Error(`${page.data.name} has no "${heading}" section`);
+  }
+  const found = [...section.matchAll(/<article\b.*?<\/article>/gs)].map(
+    ([article]) => article
+  );
+  if (found.length !== page.data[key].length) {
+    throw new Error(
+      `${found.length} articles in "${heading}" for ${page.data[key].length} entries`
+    );
+  }
+  return found;
+};
 
 const hrefs = (fragment) =>
   [...fragment.matchAll(/<a\b[^>]*href="([^"]+)"/g)].map(([, href]) => href);
@@ -71,351 +180,505 @@ const showsUrl = (text, href) => {
   });
 };
 
-const headings = [...html.matchAll(/<h2\b[^>]*>(.*?)<\/h2>/gs)].map(
-  ([, text]) => decode(text)
-);
-const sections = new Map(
-  [
-    ...html.matchAll(
-      /<section\b[^>]*>\s*<h2\b[^>]*>(.*?)<\/h2>(.*?)<\/section>/gs
-    ),
-  ].map(([, heading, body]) => [decode(heading), body])
-);
-const hasData = (key) => RESUME_DATA[key].length > 0;
-const articles = (key) => {
-  if (!hasData(key)) return [];
-  const section = sections.get(SECTION_TITLES[key]);
-  if (section === undefined) {
-    throw new Error(`no "${SECTION_TITLES[key]}" section`);
-  }
-  const found = [...section.matchAll(/<article\b.*?<\/article>/gs)].map(
-    ([article]) => article
+const isWide = (char) => {
+  const code = char.codePointAt(0) ?? 0;
+  return (
+    (code >= 0x1100 && code <= 0x115f) ||
+    (code >= 0x2329 && code <= 0x232a) ||
+    (code >= 0x2e80 && code <= 0xa4cf) ||
+    (code >= 0xac00 && code <= 0xd7a3) ||
+    (code >= 0xf900 && code <= 0xfaff) ||
+    (code >= 0xfe10 && code <= 0xfe19) ||
+    (code >= 0xfe30 && code <= 0xfe6f) ||
+    (code >= 0xff00 && code <= 0xff60) ||
+    (code >= 0xffe0 && code <= 0xffe6) ||
+    (code >= 0x1f300 && code <= 0x1f64f) ||
+    (code >= 0x1f900 && code <= 0x1f9ff) ||
+    (code >= 0x20000 && code <= 0x3fffd)
   );
-  if (found.length !== RESUME_DATA[key].length) {
-    throw new Error(
-      `${found.length} articles in "${SECTION_TITLES[key]}" for ${RESUME_DATA[key].length} entries`
-    );
-  }
-  return found;
 };
 
-const styledText = read("index.txt.body");
-const text = styledText.replace(/\x1b\[[0-9;]*m/g, "");
-const markdown = read("index.md.body");
-const llms = read("llms.txt.body");
-const unescape = (md) => md.replace(/\\([!-/:-@[-`{-~])/g, "$1");
-const site = new URL(RESUME_DATA.siteUrl).origin;
+const displayWidth = (text) =>
+  [...text].reduce((sum, char) => sum + (isWide(char) ? 2 : 1), 0);
 
-const dimLineAfterBlankLine = /(?<=\n\n) {2}\x1b\[2m([^\x1b\n]+)\x1b\[0m$/gm;
-const sectionHeadings = [
-  ["page", headings, (title) => title],
-  [
-    "text",
-    [...styledText.matchAll(dimLineAfterBlankLine)].map(([, title]) => title),
-    (title) => title.toLowerCase(),
-  ],
-  [
-    "markdown",
-    [...markdown.matchAll(/^## (.*)$/gm)].map(([, title]) => unescape(title)),
-    (title) => title,
-  ],
+const upstreamNeedles = [
+  "Bartosz",
+  "Jarocki",
+  "jarocki.me",
+  "Wrocław",
+  "Wroclaw",
+  "bartosz.jarocki",
+  "+48530213401",
+  "bjarocki",
+  "motionapp.com",
+  "film.io",
+  "parabol.co",
+  "clevertech.biz",
+  "Jojo Mobile",
+  "Nokia Siemens",
+  "monito.dev",
+  "43frames.com",
+  "cv.jarocki",
+  "Berg Guo",
 ];
-const showing = (title) =>
-  sectionHeadings
-    .filter(([, found, shown]) => found.includes(shown(title)))
-    .map(([version]) => version);
 
-const entryName = {
-  work: ({ company }) => company,
-  education: ({ school }) => school,
-  projects: ({ title }) => title,
-};
-const entryNames = Object.keys(SECTION_TITLES)
-  .filter((key) => key in entryName)
-  .flatMap((key) => RESUME_DATA[key].map(entryName[key]));
+const builtTextFiles = [
+  "zh.html",
+  "en.html",
+  "zh/index.md",
+  "en/index.md",
+  "zh/index.txt",
+  "en/index.txt",
+  "zh/llms.txt",
+  "en/llms.txt",
+  "robots.txt",
+  "sitemap.xml",
+  "index.html",
+];
 
-const dataLinks = [
-  RESUME_DATA.locationLink,
-  RESUME_DATA.personalWebsiteUrl,
-  ...RESUME_DATA.contact.social.map(({ url }) => url),
-  ...RESUME_DATA.work.map(({ link }) => link),
-  ...RESUME_DATA.projects.map(({ link }) => link),
-].filter(Boolean);
+const cjkFonts = [
+  "PingFang SC",
+  "Hiragino Sans GB",
+  "Noto Sans CJK SC",
+  "Noto Sans SC",
+  "Microsoft YaHei",
+];
 
 const checks = [
   [
-    "exactly one <h1>",
+    "OpenClaw facts stay in sync with the confirmed copy",
     () => {
-      const count = html.match(/<h1[\s>]/g)?.length ?? 0;
-      if (count !== 1) return `found ${count}`;
+      const problems = [];
+      if (FACTS.openclaw.customersServed !== 20) {
+        problems.push(`customersServed is ${FACTS.openclaw.customersServed}`);
+      }
+      if (FACTS.openclaw.customersUnderstoodInDepth !== 5) {
+        problems.push(
+          `customersUnderstoodInDepth is ${FACTS.openclaw.customersUnderstoodInDepth}`
+        );
+      }
+      if (FACTS.openclaw.start !== "2026-02-22") {
+        problems.push(`start is ${FACTS.openclaw.start}`);
+      }
+      if (FACTS.openclaw.end !== "2026-03-31") {
+        problems.push(`end is ${FACTS.openclaw.end}`);
+      }
+      for (const locale of LOCALES) {
+        const actual = getResumeData(locale).projects[0]?.highlights ?? [];
+        const expected = EXPECTED_OPENCLAW_HIGHLIGHTS[locale];
+        if (actual.join("\n") !== expected.join("\n")) {
+          problems.push(`${locale} highlights drifted from the confirmed copy`);
+        }
+      }
+      if (problems.length > 0) return problems.join("; ");
     },
   ],
   [
-    "no list inside a heading",
+    "built files exist for both locales and the root redirect",
     () => {
-      const headings = [...html.matchAll(/<(h[1-6])\b[^>]*>(.*?)<\/\1>/gs)];
-      const nested = headings.filter(([, , inner]) =>
-        /<(ul|ol)[\s>]/.test(inner)
-      );
-      if (nested.length > 0) return `found ${nested.length}`;
-    },
-  ],
-  [
-    'no role="feed"',
-    () => {
-      const count = html.match(/role="feed"/g)?.length ?? 0;
-      if (count > 0) return `found ${count}`;
-    },
-  ],
-  [
-    "JSON-LD parses",
-    () => {
-      if (jsonLdScripts.length === 0) return "no JSON-LD script";
-      for (const json of jsonLdScripts) JSON.parse(json);
-    },
-  ],
-  [
-    "exactly one <title> in <head>",
-    () => {
-      const head = html.match(/<head\b[^>]*>(.*?)<\/head>/s)?.[1] ?? "";
-      const titles = head.match(/<title[\s>]/g)?.length ?? 0;
-      if (titles !== 1) return `found ${titles}`;
-    },
-  ],
-  [
-    "og:image is present",
-    () => {
-      if (!/<meta property="og:image" content="[^"]+"/.test(html)) {
-        return "no og:image meta tag";
+      const missing = [
+        "zh.html",
+        "en.html",
+        "zh/index.md",
+        "en/index.md",
+        "zh/index.txt",
+        "en/index.txt",
+        "zh/llms.txt",
+        "en/llms.txt",
+        "zh/opengraph-image",
+        "en/opengraph-image",
+        "index.html",
+        "_redirects",
+        "_headers",
+        "robots.txt",
+        "sitemap.xml",
+      ].filter((file) => !existsSync(join(outDir, file)));
+      if (missing.length > 0) return `missing ${missing.join(", ")}`;
+      if (!readOut("_redirects").includes("/ /zh 302")) {
+        return "root redirect does not send / to /zh";
       }
     },
   ],
-  ...Object.entries(SECTION_TITLES).map(([key, heading]) =>
-    hasData(key)
-      ? [
-          `"${heading}" heading renders in the page, the text, and the markdown`,
-          () => {
-            const missing = sectionHeadings
-              .map(([version]) => version)
-              .filter((version) => !showing(heading).includes(version));
-            if (missing.length > 0) return `missing in ${missing.join(", ")}`;
-          },
-        ]
-      : [
-          `empty ${key} hides the "${heading}" heading`,
-          () => {
-            if (showing(heading).length > 0) {
-              return `found in ${showing(heading).join(", ")}`;
+  ...LOCALES.flatMap((locale) => {
+    const page = pages[locale];
+    const ui = UI[locale];
+    const canonical = new URL(localePath(locale), site).href;
+    return [
+      [
+        `${locale}: exactly one <h1> named ${FACTS.name}`,
+        () => {
+          const count = page.html.match(/<h1[\s>]/g)?.length ?? 0;
+          if (count !== 1) return `found ${count}`;
+          const name = decode(
+            page.html.match(/<h1\b[^>]*>(.*?)<\/h1>/s)?.[1] ?? ""
+          );
+          if (name !== FACTS.name) return `h1 is ${name}`;
+        },
+      ],
+      [
+        `${locale}: html lang and title are localized`,
+        () => {
+          const lang = page.html.match(/<html\b[^>]*lang="([^"]+)"/)?.[1];
+          const expectedLang = locale === "zh" ? "zh-CN" : "en";
+          if (lang !== expectedLang) return `lang is ${lang}`;
+          const title = decode(
+            page.html.match(/<title>(.*?)<\/title>/)?.[1] ?? ""
+          );
+          const expected = `${FACTS.name} - ${ui.pageTitleFallback}`;
+          if (title !== expected) return `title is ${title}`;
+        },
+      ],
+      [
+        `${locale}: canonical, hreflang, and og:url point at locale URLs`,
+        () => {
+          const canonicalHref = page.html.match(
+            /<link rel="canonical" href="([^"]*)"/
+          )?.[1];
+          if (canonicalHref !== canonical) {
+            return `canonical is ${canonicalHref}`;
+          }
+          const ogUrl = page.html.match(
+            /<meta property="og:url" content="([^"]*)"/
+          )?.[1];
+          if (ogUrl !== canonical) return `og:url is ${ogUrl}`;
+          const missing = [
+            ['hreflang="zh-CN"', `${site}/zh`],
+            ['hreflang="en"', `${site}/en`],
+            ['hreflang="x-default"', `${site}/${DEFAULT_LOCALE}`],
+          ].filter(
+            ([attr, href]) =>
+              !page.html.includes(
+                `<link rel="alternate" hrefLang="${attr.slice(10, -1)}" href="${href}"`
+              ) &&
+              !page.html.includes(
+                `<link rel="alternate" hreflang="${attr.slice(10, -1)}" href="${href}"`
+              )
+          );
+          // Next emits hrefLang
+          const alternates = [
+            ...page.html.matchAll(
+              /<link rel="alternate" hrefLang="([^"]+)" href="([^"]+)"/g
+            ),
+          ];
+          const found = Object.fromEntries(
+            alternates.map(([, lang, href]) => [lang, href])
+          );
+          const expected = {
+            "zh-CN": `${site}/zh`,
+            en: `${site}/en`,
+            "x-default": `${site}/${DEFAULT_LOCALE}`,
+          };
+          const wrong = Object.entries(expected).flatMap(([lang, href]) =>
+            found[lang] === href ? [] : [`${lang} is ${found[lang]}`]
+          );
+          if (wrong.length > 0) return wrong.join("; ");
+        },
+      ],
+      [
+        `${locale}: markdown alternate and twitter:creator are set`,
+        () => {
+          const href = page.html.match(
+            /<link rel="alternate" type="text\/markdown" href="([^"]*)"/
+          )?.[1];
+          const expected = `${canonical}/index.md`;
+          if (href !== expected) return `alternate is ${href}`;
+          const creator = page.html.match(
+            /<meta name="twitter:creator" content="([^"]*)"/
+          )?.[1];
+          if (creator !== "@PssBerg") return `twitter:creator is ${creator}`;
+        },
+      ],
+      [
+        `${locale}: JSON-LD parses as one Person without employment fields`,
+        () => {
+          if (page.jsonLdScripts.length === 0) return "no JSON-LD script";
+          for (const json of page.jsonLdScripts) {
+            const data = JSON.parse(json);
+            const blob = JSON.stringify(data);
+            const people = blob.match(/"@type":"Person"/g)?.length ?? 0;
+            if (people !== 1) return `found ${people} Person objects`;
+            if (blob.includes("estimatedSalary")) return "has estimatedSalary";
+            if (blob.includes("jobTitle")) return "has jobTitle";
+            if (blob.includes("worksFor")) return "has worksFor";
+            if (blob.includes("alumniOf")) return "has alumniOf";
+          }
+        },
+      ],
+      [
+        `${locale}: visible sections match the data`,
+        () => {
+          const expected = Object.entries(page.titles)
+            .filter(([key]) => hasData(page.data, key))
+            .map(([, title]) => title);
+          const hidden = Object.entries(page.titles)
+            .filter(([key]) => !hasData(page.data, key))
+            .map(([, title]) => title);
+          const problems = [];
+          if (page.headings.join("\n") !== expected.join("\n")) {
+            problems.push(`page has ${page.headings.join(", ")}`);
+          }
+          for (const title of expected) {
+            const missing = ["page", "text", "markdown"].filter(
+              (version) => !showing(page, title).includes(version)
+            );
+            if (missing.length > 0) {
+              problems.push(`"${title}" missing in ${missing.join(", ")}`);
             }
-          },
-        ]
-  ),
+          }
+          for (const title of hidden) {
+            if (showing(page, title).length > 0) {
+              problems.push(
+                `"${title}" shown in ${showing(page, title).join(", ")}`
+              );
+            }
+          }
+          if (problems.length > 0) return problems.join("; ");
+        },
+      ],
+      [
+        `${locale}: OpenClaw title, dates, and highlights render`,
+        () => {
+          const project = page.data.projects[0];
+          const problems = [];
+          const htmlText = decode(page.html.replace(/<[^>]+>/g, " "));
+          const folded = (value) => value.replace(/\s+/g, " ");
+          const htmlFolded = folded(htmlText);
+          const textFolded = folded(page.text);
+          for (const value of [
+            project.title,
+            FACTS.openclaw.start,
+            FACTS.openclaw.end,
+            ...project.highlights,
+          ]) {
+            const needle = folded(value);
+            if (!htmlFolded.includes(needle)) {
+              problems.push(`html lacks ${value}`);
+            }
+            if (!page.markdown.includes(value)) {
+              problems.push(`markdown lacks ${value}`);
+            }
+            if (!textFolded.includes(needle)) {
+              problems.push(`text lacks ${value}`);
+            }
+          }
+          if (problems.length > 0) return problems.join("; ");
+        },
+      ],
+      [
+        `${locale}: language switch and print control exist and are print-hidden`,
+        () => {
+          const other = locale === "zh" ? "en" : "zh";
+          const controls = page.html.match(
+            /<div class="flex flex-wrap items-center justify-end[^"]*print:hidden[^"]*"/
+          );
+          if (!controls) return "no print-hidden page controls";
+          if (!page.html.includes(`href="${localePath(other)}"`)) {
+            return `no link to ${localePath(other)}`;
+          }
+          if (!page.html.includes(ui.print)) return "print label missing";
+          if (!ui.print.includes("PDF")) {
+            return "print label does not mention PDF";
+          }
+        },
+      ],
+      [
+        `${locale}: contact links are GitHub and X only`,
+        () => {
+          const header = page.html.match(/<header\b.*?<\/header>/s)?.[0] ?? "";
+          const links = hrefs(header).map(decode);
+          const expected = [FACTS.githubUrl, FACTS.xUrl];
+          const unique = [...new Set(links)];
+          const missing = expected.filter((href) => !unique.includes(href));
+          const extra = unique.filter((href) => !expected.includes(href));
+          if (missing.length || extra.length) {
+            return [
+              ...missing.map((href) => `missing ${href}`),
+              ...extra.map((href) => `extra ${href}`),
+            ].join("; ");
+          }
+        },
+      ],
+      [
+        `${locale}: the markdown starts with # and the name`,
+        () => {
+          const first = unescape(page.markdown.split("\n")[0]);
+          if (first !== `# ${FACTS.name}`) return `starts with "${first}"`;
+        },
+      ],
+      [
+        `${locale}: the text starts with the name in bold`,
+        () => {
+          const first = page.styledText.split("\n").find((line) => line.trim());
+          if (!first?.startsWith("  \x1b[1m")) return `starts with ${first}`;
+          if (!page.text.trim().replace(/\s+/g, " ").startsWith(FACTS.name)) {
+            return `the first words are not ${FACTS.name}`;
+          }
+        },
+      ],
+      [
+        `${locale}: no text line passes 80 columns, except a URL on its own`,
+        () => {
+          const lines = page.text.split("\n");
+          if (!lines.some((line) => line.trim())) return "the text is empty";
+          const dataLinks = page.data.contact.social.map(({ url }) => url);
+          const long = lines.filter(
+            (line) =>
+              displayWidth(line) > 80 &&
+              !dataLinks.some((href) => showsUrl(line.trim(), href))
+          );
+          if (long.length > 0) {
+            return `${long.length} lines, the first is "${long[0].trim()}"`;
+          }
+        },
+      ],
+      [
+        `${locale}: llms.txt is the markdown with a formats paragraph after the blockquote`,
+        () => {
+          const lines = page.llms.split("\n");
+          const [title, , quote, , formats] = lines;
+          const problems = [];
+          if (title !== page.markdown.split("\n")[0]) {
+            problems.push(`starts with ${title}`);
+          }
+          if (unescape(quote ?? "") !== `> ${page.data.about}`) {
+            problems.push(`has ${quote} for the blockquote`);
+          }
+          for (const name of [
+            `${site}${localePath(locale, "/index.md")}`,
+            `${site}${localePath(locale, "/index.txt")}`,
+          ]) {
+            if (!formats?.includes(`\`${name}\``)) {
+              problems.push(`does not name ${name}`);
+            }
+          }
+          if (
+            [...lines.slice(0, 4), ...lines.slice(6)].join("\n") !==
+            page.markdown
+          ) {
+            problems.push("differs from the markdown outside that paragraph");
+          }
+          if (problems.length > 0) return problems.join("; ");
+        },
+      ],
+      [
+        `${locale}: preloads only the two fonts the page uses`,
+        () => {
+          const fonts =
+            page.html.match(
+              /<link rel="preload" href="[^"]*" as="font"/g
+            )?.length ?? 0;
+          if (fonts !== 2) return `preloads ${fonts}`;
+        },
+      ],
+      [
+        `${locale}: og:image is present`,
+        () => {
+          if (!/<meta property="og:image" content="[^"]+"/.test(page.html)) {
+            return "no og:image meta tag";
+          }
+        },
+      ],
+    ];
+  }),
   [
-    "the page, the text, and the markdown list the sections in one order",
+    "print stylesheet uses A4 and Chinese system fonts",
     () => {
-      const titles = Object.entries(SECTION_TITLES)
-        .filter(([key]) => hasData(key))
-        .map(([, title]) => title);
-      const wrong = sectionHeadings.filter(
-        ([, found, shown]) => found.join("\n") !== titles.map(shown).join("\n")
-      );
-      if (wrong.length > 0) {
-        return wrong
-          .map(([version, found]) => `${version} has ${found.join(", ")}`)
-          .join("; ");
+      const problems = [];
+      if (!/@page\{size:A4;/.test(css) && !/@page \{\s*size: A4;/.test(css)) {
+        problems.push("no A4 page size");
       }
+      const missing = cjkFonts.filter((font) => !css.includes(`"${font}"`));
+      if (missing.length > 0) {
+        problems.push(`CSS lacks ${missing.join(", ")}`);
+      }
+      if (!css.includes("@media print")) return "no print media rules";
+      if (problems.length > 0) return problems.join("; ");
     },
   ],
   [
-    "canonical URL is siteUrl",
+    "the built resume does not contain the upstream person's identity",
     () => {
-      const canonical = html.match(/<link rel="canonical" href="([^"]*)"/)?.[1];
-      if (!isSiteUrl(canonical)) return `canonical is ${canonical}`;
+      const hits = [];
+      for (const file of builtTextFiles) {
+        const text = readOut(file);
+        for (const needle of upstreamNeedles) {
+          if (text.includes(needle)) hits.push(`${file}: ${needle}`);
+        }
+      }
+      for (const [file, source] of sources) {
+        for (const needle of upstreamNeedles) {
+          if (source.includes(needle)) hits.push(`src/${file}: ${needle}`);
+        }
+      }
+      if (hits.length > 0) return hits.join("; ");
     },
   ],
   [
-    "og:url is siteUrl and og:site_name is set",
+    "the published pages do not invent email, phone, location, or analytics",
     () => {
-      if (!isSiteUrl(meta("og:url"))) return `og:url is ${meta("og:url")}`;
-      if (!meta("og:site_name")) return "no og:site_name";
-    },
-  ],
-  [
-    "twitter:creator matches the X link",
-    () => {
-      const x = RESUME_DATA.contact.social.find(({ icon }) => icon === "x");
-      const expected =
-        x && `@${new URL(x.url).pathname.split("/").find(Boolean)}`;
-      const creator = meta("twitter:creator");
-      if (creator !== expected) return `expected ${expected}, found ${creator}`;
-    },
-  ],
-  [
-    "JSON-LD has one Person and no estimatedSalary",
-    () => {
-      const jsonLd = jsonLdScripts.join("\n");
-      const people = jsonLd.match(/"@type":"Person"/g)?.length ?? 0;
-      if (people !== 1) return `found ${people} Person objects`;
-      if (jsonLd.includes("estimatedSalary")) return "has estimatedSalary";
-    },
-  ],
-  [
-    "title names the current role",
-    () => {
-      const role =
-        RESUME_DATA.work.find(({ end }) => end === null)?.title ?? "Resume";
-      const title = decode(html.match(/<title>(.*?)<\/title>/)?.[1] ?? "");
-      if (!title.includes(role)) return `"${title}" lacks "${role}"`;
+      const needles = [
+        "mailto:",
+        "tel:",
+        "vercel-analytics",
+        "China",
+        "中国",
+      ];
+      const hits = builtTextFiles.flatMap((file) =>
+        needles
+          .filter((needle) => readOut(file).includes(needle))
+          .map((needle) => `${file}: ${needle}`)
+      );
+      const sourceHits = sources.flatMap(([file, source]) =>
+        source.includes("vercel-analytics") ||
+        source.includes("@vercel/analytics")
+          ? [`src/${file}: analytics`]
+          : []
+      );
+      const found = [...hits, ...sourceHits];
+      if (found.length > 0) return found.join("; ");
     },
   ],
   [
     "generated robots.txt allows /_next/",
     () => {
-      if (/^Disallow:\s*\/_next\//im.test(read("robots.txt.body"))) {
+      if (/^Disallow:\s*\/_next\//im.test(readOut("robots.txt"))) {
         return "disallows /_next/";
       }
     },
   ],
   [
-    "every project link prints a URL outside the heading that leads to it",
+    "no list inside a heading",
     () => {
-      const missing = [];
-      const problems = [];
-      for (const [index, article] of articles("projects").entries()) {
-        const { title, link } = RESUME_DATA.projects[index];
-        if (!link) continue;
-        const heading = article.match(/<h3\b.*?<\/h3>/s)?.[0] ?? "";
-        const texts = [
-          ...article.replace(heading, "").matchAll(/>([^<]+)</g),
-        ].map(([, text]) => decode(text));
-        if (!heading || !texts.some((text) => showsUrl(text, link))) {
-          missing.push(link);
-        }
-        const links = hrefs(article).map(decode);
-        if (links.length !== 2) {
-          problems.push(`${title} has ${links.length} links, expected 2`);
-        }
-        for (const href of links.filter((href) => href !== link)) {
-          problems.push(`${title} links to ${href}`);
-        }
+      for (const locale of LOCALES) {
+        const headings = [
+          ...pages[locale].html.matchAll(/<(h[1-6])\b[^>]*>(.*?)<\/\1>/gs),
+        ];
+        const nested = headings.filter(([, , inner]) =>
+          /<(ul|ol)[\s>]/.test(inner)
+        );
+        if (nested.length > 0) return `${locale} has ${nested.length}`;
       }
-      if (missing.length > 0) problems.unshift(`missing ${missing.join(", ")}`);
-      if (problems.length > 0) return problems.join("; ");
     },
   ],
   [
-    "the print contact row has every contact link",
+    'no role="feed"',
     () => {
-      const header = html.match(/<header\b.*?<\/header>/s)?.[0] ?? "";
-      const buttons = header.match(
-        /<ul\b[^>]*aria-label="Contact links"[^>]*>.*?<\/ul>/s
-      )?.[0];
-      if (!buttons) return "no contact links list";
-      const printed = [
-        ...header
-          .replace(buttons, "")
-          .matchAll(/<a\b[^>]*href="([^"]+)"[^>]*>[^<]+<\/a>/g),
-      ].map(([, href]) => href);
-      const links = hrefs(buttons);
-      const { personalWebsiteUrl, contact } = RESUME_DATA;
-      const contacts = [
-        personalWebsiteUrl,
-        contact.email && `mailto:${contact.email}`,
-        contact.tel && `tel:${contact.tel}`,
-        ...contact.social.map(({ url }) => url),
-      ].filter(Boolean);
-      if (links.length !== contacts.length) {
-        const shown = links.map(decode);
-        return [
-          `${links.length} contact links for ${contacts.length} contacts`,
-          ...contacts
-            .filter((href) => !shown.includes(href))
-            .map((href) => `no link for ${href}`),
-          ...shown
-            .filter((href) => !contacts.includes(href))
-            .map((href) => `extra link ${href}`),
-        ].join(", ");
+      for (const locale of LOCALES) {
+        const count = pages[locale].html.match(/role="feed"/g)?.length ?? 0;
+        if (count > 0) return `${locale} found ${count}`;
       }
-      const missing = links.filter((href) => !printed.includes(href));
-      if (missing.length > 0) return `missing ${missing.join(", ")}`;
     },
   ],
   [
     "no text class below 9px",
     () => {
-      const sizes = [...html.matchAll(/\btext-\[(\d+(?:\.\d+)?)px\]/g)];
+      const sizes = LOCALES.flatMap((locale) => [
+        ...pages[locale].html.matchAll(/\btext-\[(\d+(?:\.\d+)?)px\]/g),
+      ]);
       const small = new Set(
         sizes.map(([, px]) => Number(px)).filter((px) => px < 9)
       );
       if (small.size > 0) return `found ${[...small].join("px, ")}px`;
-    },
-  ],
-  [
-    "each entry lists its tags once",
-    () => {
-      const entries = [
-        ...articles("work").map((article, index) => [
-          article,
-          RESUME_DATA.work[index].company,
-          RESUME_DATA.work[index].badges,
-        ]),
-        ...articles("projects").map((article, index) => [
-          article,
-          RESUME_DATA.projects[index].title,
-          RESUME_DATA.projects[index].techStack,
-        ]),
-      ];
-      const wrong = entries.flatMap(([article, name, tags]) => {
-        const found =
-          article.match(/aria-label="Technologies used"/g)?.length ?? 0;
-        const expected = tags.length > 0 ? 1 : 0;
-        return found === expected
-          ? []
-          : `${name} has ${found} "Technologies used" lists, expected ${expected}`;
-      });
-      if (wrong.length > 0) return wrong.join("; ");
-    },
-  ],
-  [
-    "tag separators keep the dot on the tag's line",
-    () => {
-      const tagLists = {
-        "List of skills": [RESUME_DATA.skills],
-        "Technologies used": [
-          ...RESUME_DATA.work.map(({ badges }) => badges),
-          ...RESUME_DATA.projects.map(({ techStack }) => techStack),
-        ],
-      };
-      const problems = [];
-      for (const [label, tagSets] of Object.entries(tagLists)) {
-        const filled = tagSets.filter((tags) => tags.length > 0);
-        const expected = filled.reduce((sum, tags) => sum + tags.length - 1, 0);
-        const lists =
-          html.match(
-            new RegExp(`<ul\\b[^>]*aria-label="${label}".*?</ul>`, "gs")
-          ) ?? [];
-        const separators = lists.flatMap((list) =>
-          [
-            ...list.matchAll(
-              /<span\b[^>]*aria-hidden="true"[^>]*>([^<]*)<\/span>/g
-            ),
-          ].map(([, text]) => text)
-        );
-        if (lists.length !== filled.length || separators.length !== expected) {
-          problems.push(
-            `${lists.length} "${label}" lists with ${separators.length} separators, expected ${filled.length} with ${expected}`
-          );
-        }
-        const breaking = separators.filter(
-          (text) => !text.startsWith("\u00a0")
-        );
-        if (breaking.length > 0) {
-          problems.push(
-            `${breaking.length} "${label}" separators without a no-break space`
-          );
-        }
-      }
-      if (problems.length > 0) return problems.join("; ");
     },
   ],
   [
@@ -444,132 +707,17 @@ const checks = [
     },
   ],
   [
-    "preloads only the two fonts the page uses",
+    "project entries without a link do not invent a printed URL",
     () => {
-      const fonts =
-        html.match(/<link rel="preload" href="[^"]*" as="font"/g)?.length ?? 0;
-      if (fonts !== 2) return `preloads ${fonts}`;
-    },
-  ],
-  [
-    "the text starts with the name in bold",
-    () => {
-      const first = styledText.split("\n").find((line) => line.trim());
-      if (!first?.startsWith("  \x1b[1m")) return `starts with ${first}`;
-      if (!text.trim().replace(/\s+/g, " ").startsWith(RESUME_DATA.name)) {
-        return `the first words are not ${RESUME_DATA.name}`;
-      }
-    },
-  ],
-  [
-    "the markdown starts with # and the name",
-    () => {
-      const first = unescape(markdown.split("\n")[0]);
-      if (first !== `# ${RESUME_DATA.name}`) return `starts with "${first}"`;
-    },
-  ],
-  [
-    "the text and the markdown show every company, school, and project in order",
-    () => {
-      const problems = [];
-      const words = text.replace(/\s+/g, " ");
-      let at = 0;
-      for (const name of entryNames) {
-        const found = words.indexOf(name, at);
-        if (found === -1) problems.push(`the text lacks ${name}`);
-        else at = found + name.length;
-      }
-      const titles = [...markdown.matchAll(/^### (.*)$/gm)].map(([, title]) =>
-        unescape(title.replace(/^\[(.*)\]\((?:<[^>]*>|[^)]*)\)$/, "$1"))
-      );
-      if (titles.join("\n") !== entryNames.join("\n")) {
-        problems.push(`the markdown has ${titles.join(", ")}`);
-      }
-      if (problems.length > 0) return problems.join("; ");
-    },
-  ],
-  [
-    "the text and the markdown show every link in the data",
-    () => {
-      const { email, tel } = RESUME_DATA.contact;
-      const words = text.split(/\s+/).filter((word) => {
-        const host = word.split(/[/?#]/)[0];
-        return host === host.toLowerCase();
-      });
-      const hrefs = [
-        email && `mailto:${email}`,
-        tel && `tel:${tel}`,
-        ...dataLinks,
-      ].filter(Boolean);
-      const missing = [
-        ...dataLinks
-          .filter((href) => !words.some((word) => showsUrl(word, href)))
-          .map((href) => `the text lacks ${href}`),
-        ...[email, tel]
-          .filter((value) => value && !words.includes(value))
-          .map((value) => `the text lacks ${value}`),
-        ...hrefs
-          .filter(
-            (href) =>
-              !markdown.includes(`](${href})`) &&
-              !markdown.includes(`](<${href}>)`)
-          )
-          .map((href) => `the markdown lacks ${href}`),
-      ];
-      if (missing.length > 0) return missing.join("; ");
-    },
-  ],
-  [
-    "no text line passes 80 columns, except a URL on its own",
-    () => {
-      const lines = text.split("\n");
-      if (!lines.some((line) => line.trim())) return "the text is empty";
-      const long = lines.filter(
-        (line) =>
-          [...line].length > 80 &&
-          !dataLinks.some((href) => showsUrl(line.trim(), href))
-      );
-      if (long.length > 0) {
-        return `${long.length} lines, the first is "${long[0].trim()}"`;
-      }
-    },
-  ],
-  [
-    "llms.txt is the markdown with a paragraph on the other formats after the blockquote",
-    () => {
-      const lines = llms.split("\n");
-      const [title, , quote, , formats] = lines;
-      const problems = [];
-      if (title !== markdown.split("\n")[0]) {
-        problems.push(`starts with ${title}`);
-      }
-      if (unescape(quote ?? "") !== `> ${RESUME_DATA.about}`) {
-        problems.push(`has ${quote} for the blockquote`);
-      }
-      for (const name of [
-        `curl ${site}`,
-        `${site}/index.md`,
-        "Accept: text/markdown",
-      ]) {
-        if (!formats?.includes(`\`${name}\``)) {
-          problems.push(`does not name ${name}`);
+      for (const locale of LOCALES) {
+        const page = pages[locale];
+        for (const [index, article] of articles(page, "projects").entries()) {
+          const project = page.data.projects[index];
+          if (project.link) continue;
+          if (article.includes("print:block")) {
+            return `${locale} ${project.title} prints a URL without a link`;
+          }
         }
-      }
-      if ([...lines.slice(0, 4), ...lines.slice(6)].join("\n") !== markdown) {
-        problems.push("differs from the markdown outside that paragraph");
-      }
-      if (problems.length > 0) return problems.join("; ");
-    },
-  ],
-  [
-    "the page links its markdown version",
-    () => {
-      const href = html.match(
-        /<link rel="alternate" type="text\/markdown" href="([^"]*)"/
-      )?.[1];
-      const expected = new URL("/index.md", site).href;
-      if (href === undefined || new URL(href, site).href !== expected) {
-        return `alternate is ${href}`;
       }
     },
   ],

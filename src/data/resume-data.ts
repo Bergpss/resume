@@ -1,173 +1,114 @@
+import type { Locale } from "@/lib/i18n";
+import { UI } from "@/lib/i18n";
 import type { ResumeData } from "@/lib/types";
-import avatar from "./avatar.jpg";
 
-export const RESUME_DATA: ResumeData = {
-  name: "Bartosz Jarocki",
-  location: "Wrocław, Poland, CET",
-  locationLink: "https://www.google.com/maps/place/Wrocław",
-  about: "Full Stack Engineer building products from the ground up.",
-  summary:
-    "Full Stack Engineer with 15+ years of experience and 10+ years working remotely. Building high-performance web applications, leading distributed teams, and creating open source tools used by thousands of developers.",
-  avatar,
-  siteUrl: "https://cv.jarocki.me",
-  personalWebsiteUrl: "https://jarocki.me",
-  contact: {
-    email: "bartosz.jarocki@hey.com",
-    tel: "+48530213401",
-    social: [
-      {
-        name: "GitHub",
-        url: "https://github.com/BartoszJarocki",
-        icon: "github",
-      },
-      {
-        name: "LinkedIn",
-        url: "https://www.linkedin.com/in/bjarocki/",
-        icon: "linkedin",
-      },
-      {
-        name: "X",
-        url: "https://x.com/BartoszJarocki",
-        icon: "x",
-      },
+export const FACTS = {
+  name: "Berg",
+  siteUrl: "https://resume.guoyibo.top",
+  githubUrl: "https://github.com/Bergpss",
+  xUrl: "https://x.com/PssBerg",
+  openclaw: {
+    start: "2026-02-22",
+    end: "2026-03-31",
+    customersServed: 20,
+    customersUnderstoodInDepth: 5,
+  },
+} as const;
+
+export const EXPECTED_OPENCLAW_HIGHLIGHTS = {
+  zh: [
+    "累计服务20位客户，指导完成OpenClaw安装与配置。",
+    "深入了解其中5位客户的业务，并根据客户业务需求定制Skills。",
+  ],
+  en: [
+    "Helped 20 customers install and configure OpenClaw.",
+    "Developed an in-depth understanding of five customers’ business workflows and customized Skills around customer needs.",
+  ],
+} as const;
+
+const copy: Record<
+  Locale,
+  {
+    about: string;
+    summary: string;
+    openclawTitle: string;
+    openclawHighlights: readonly [string, string];
+  }
+> = {
+  zh: {
+    about: "帮助客户完成 AI 工具的安装、配置与定制。",
+    summary:
+      "我帮助客户安装、配置 OpenClaw，并在深入了解其业务后，按需求定制 Skills。",
+    openclawTitle: "OpenClaw 客户服务与定制",
+    openclawHighlights: [
+      `累计服务${FACTS.openclaw.customersServed}位客户，指导完成OpenClaw安装与配置。`,
+      `深入了解其中${FACTS.openclaw.customersUnderstoodInDepth}位客户的业务，并根据客户业务需求定制Skills。`,
     ],
   },
-  education: [
-    {
-      school: "Wrocław University of Technology",
-      degree: "Bachelor's Degree in Control systems engineering and Robotics",
-      start: "2007",
-      end: "2010",
-    },
-  ],
-  work: [
-    {
-      company: "Motion",
-      link: "https://motionapp.com/",
-      badges: ["Remote", "AI", "React", "Next.js", "TypeScript", "AdonisJS"],
-      title: "Senior Software Engineer",
-      start: "2025",
-      end: null,
-      description:
-        "Building an internal AI agents platform that enables marketing teams to create and manage AI-powered workflows.",
-    },
-    {
-      company: "Film.io",
-      link: "https://film.io",
-      badges: ["Remote", "React", "Next.js", "TypeScript", "Node.js"],
-      title: "Software Architect",
-      start: "2024",
-      end: "2025",
-      description:
-        "Led technical architecture of a blockchain-based film funding platform.",
-      highlights: [
-        "Architected migration from CRA to Next.js for improved performance, SEO, and DX",
-        "Established release process enabling faster deployments and reliable rollbacks",
-        "Implemented system-wide monitoring and security improvements",
-      ],
-    },
-    {
-      company: "Parabol",
-      link: "https://parabol.co",
-      badges: [
-        "Remote",
-        "React",
-        "TypeScript",
-        "Node.js",
-        "GraphQL",
-        "Tailwind CSS",
-      ],
-      title: "Senior Full Stack Developer",
-      start: "2021",
-      end: "2024",
-      description:
-        "Led a product squad building an enterprise agile meeting platform.",
-      highlights: [
-        "Built design system with Tailwind CSS, improving development speed and time to market",
-        "Implemented engineering practices: PR automation, code review guidelines, and workflows",
-        "Open source contributions to Relay DevTools and React i18n tooling",
-      ],
-    },
-    {
-      company: "Clevertech",
-      link: "https://clevertech.biz",
-      badges: ["Remote", "React", "TypeScript", "Node.js", "Android", "Kotlin"],
-      title: "Lead Android Developer → Full Stack Developer",
-      start: "2015",
-      end: "2021",
-      description:
-        "Transitioned from mobile to full-stack development while leading distributed teams across multiple client projects.",
-      highlights: [
-        "Led frontend team at Evercast, building real-time platform supporting 30+ users per room with HD streaming and collaboration tools",
-        "Developed offline-first Android app for DKMS, improving donor registration process",
-        "Led development teams across multiple successful client projects",
-      ],
-    },
-    {
-      company: "Jojo Mobile",
-      link: "https://bsgroup.eu/",
-      badges: ["On Site", "Android", "Java", "Kotlin"],
-      title: "Android Developer → Lead Android Developer",
-      start: "2012",
-      end: "2015",
-      description:
-        "First Android developer, grew and led a team of 15+ engineers. Established mobile engineering culture and delivery processes.",
-      highlights: [
-        "Developed apps for major Polish companies including LOT, Polskie Radio, and Agora",
-        "Built and mentored high-performing mobile development team",
-      ],
-    },
-    {
-      company: "Nokia Siemens Networks",
-      link: "https://www.nokia.com",
-      badges: ["On Site", "C/C++", "LTE", "Agile"],
-      title: "C/C++ Developer",
-      start: "2010",
-      end: "2012",
-      description:
-        "Developed software for LTE base stations at enterprise scale. Built strong foundations in software architecture, testing practices, and cross-team collaboration.",
-    },
-  ],
-  skills: [
-    "React/Next.js",
-    "TypeScript",
-    "Node.js",
-    "AI/LLMs",
-    "Tailwind CSS",
-    "Design Systems",
-    "WebRTC",
-    "WebSockets",
-    "GraphQL",
-    "System Architecture",
-    "Remote Team Leadership",
-  ],
-  projects: [
-    {
-      title: "Monito",
-      techStack: ["TypeScript", "Next.js", "AI", "Browser Extension"],
-      description: "Autonomous QA AI agent for web applications",
-      link: "https://monito.dev/",
-    },
-    {
-      title: "43frames",
-      techStack: ["TypeScript", "Next.js", "AI"],
-      description: "AI-powered image and video generation studio",
-      link: "https://43frames.com/",
-    },
-    {
-      title: "Minimalist CV",
-      techStack: ["TypeScript", "Next.js", "Tailwind CSS"],
-      description:
-        "Open source, print-friendly CV template. 9,600+ stars on GitHub",
-      link: "https://github.com/BartoszJarocki/cv",
-    },
-  ],
+  en: {
+    about: "Helping customers adopt and customize AI tools.",
+    summary:
+      "I help customers install and configure OpenClaw, and after developing an in-depth understanding of their business, I customize Skills around their needs.",
+    openclawTitle: "OpenClaw Setup & Customization",
+    openclawHighlights: [
+      `Helped ${FACTS.openclaw.customersServed} customers install and configure OpenClaw.`,
+      "Developed an in-depth understanding of five customers’ business workflows and customized Skills around customer needs.",
+    ],
+  },
 };
 
-export const SECTION_TITLES = {
-  summary: "About",
-  work: "Work Experience",
-  education: "Education",
-  skills: "Skills",
-  projects: "Side projects",
-} satisfies Partial<Record<keyof ResumeData, string>>;
+export type SectionKey =
+  | "summary"
+  | "work"
+  | "education"
+  | "skills"
+  | "projects";
+
+export type SectionTitles = Record<SectionKey, string>;
+
+export function getSectionTitles(locale: Locale): SectionTitles {
+  const ui = UI[locale];
+  return {
+    summary: ui.aboutSection,
+    work: ui.workSection,
+    education: ui.educationSection,
+    skills: ui.skillsSection,
+    projects: ui.projectsSection,
+  };
+}
+
+export function getResumeData(locale: Locale): ResumeData {
+  const text = copy[locale];
+  return {
+    name: FACTS.name,
+    about: text.about,
+    summary: text.summary,
+    siteUrl: FACTS.siteUrl,
+    contact: {
+      social: [
+        {
+          name: "GitHub",
+          url: FACTS.githubUrl,
+          icon: "github",
+        },
+        {
+          name: "X",
+          url: FACTS.xUrl,
+          icon: "x",
+        },
+      ],
+    },
+    education: [],
+    work: [],
+    skills: [],
+    projects: [
+      {
+        title: text.openclawTitle,
+        start: FACTS.openclaw.start,
+        end: FACTS.openclaw.end,
+        highlights: [...text.openclawHighlights],
+        techStack: [],
+      },
+    ],
+  };
+}

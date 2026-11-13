@@ -1,7 +1,9 @@
-import { RESUME_DATA } from "@/data/resume-data";
+import type { Locale } from "@/lib/i18n";
+import { localePath, siteName } from "@/lib/i18n";
 import { getCurrentRole } from "@/lib/resume";
+import type { ResumeData } from "@/lib/types";
 
-export function generateResumeStructuredData() {
+export function generateResumeStructuredData(data: ResumeData, locale: Locale) {
   const {
     name,
     about,
@@ -12,36 +14,45 @@ export function generateResumeStructuredData() {
     work,
     education,
     skills,
-  } = RESUME_DATA;
+  } = data;
   const currentRole = getCurrentRole(work);
+  const pageUrl = new URL(localePath(locale), siteUrl).href;
 
   return {
     "@context": "https://schema.org",
     "@type": "ProfilePage",
-    name: `${name} - Professional Resume`,
-    description: `Professional resume and portfolio of ${name}, ${about}`,
-    url: siteUrl,
+    name: siteName(name, locale),
+    description: about,
+    url: pageUrl,
     mainEntity: {
       "@type": "Person",
       name,
       description: about,
-      url: siteUrl,
-      image: new URL(avatar.src, siteUrl).href,
+      url: pageUrl,
+      ...(avatar ? { image: new URL(avatar.src, siteUrl).href } : {}),
       sameAs: [
         ...(personalWebsiteUrl ? [personalWebsiteUrl] : []),
         ...contact.social.map(({ url }) => url),
       ],
-      jobTitle: currentRole?.title,
-      worksFor: currentRole && {
-        "@type": "Organization",
-        name: currentRole.company,
-        url: currentRole.link,
-      },
-      alumniOf: education.map(({ school }) => ({
-        "@type": "EducationalOrganization",
-        name: school,
-      })),
-      knowsAbout: skills,
+      ...(currentRole
+        ? {
+            jobTitle: currentRole.title,
+            worksFor: {
+              "@type": "Organization",
+              name: currentRole.company,
+              ...(currentRole.link ? { url: currentRole.link } : {}),
+            },
+          }
+        : {}),
+      ...(education.length > 0
+        ? {
+            alumniOf: education.map(({ school }) => ({
+              "@type": "EducationalOrganization",
+              name: school,
+            })),
+          }
+        : {}),
+      ...(skills.length > 0 ? { knowsAbout: skills } : {}),
     },
   };
 }

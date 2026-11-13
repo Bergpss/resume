@@ -35,6 +35,10 @@
   body {
     @apply bg-background text-foreground font-mono print:bg-transparent;
   }
+  :lang(zh) {
+    line-height: 1.7;
+    line-break: strict;
+  }
   ::selection {
     @apply bg-foreground text-background;
   }
@@ -73,5 +77,12 @@
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;
+  }
+
+  body {
+    font-family:
+      var(--font-geist-mono), ui-monospace, "PingFang SC", "Hiragino Sans GB",
+      "Noto Sans CJK SC", "Noto Sans SC", "Source Han Sans SC",
+      "Microsoft YaHei", "WenQuanYi Micro Hei", sans-serif;
   }
 }

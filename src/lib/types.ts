@@ -10,7 +10,7 @@ export interface SocialLink {
 
 export interface WorkEntry {
   company: string;
-  link: string;
+  link?: string;
   badges: string[];
   title: string;
   start: string;
@@ -29,22 +29,25 @@ export interface EducationEntry {
 export interface Project {
   title: string;
   techStack: string[];
-  description: string;
+  description?: string;
+  highlights?: string[];
+  start?: string;
+  end?: string | null;
   link?: string;
 }
 
 export interface ResumeData {
   name: string;
-  location: string;
-  locationLink: string;
+  location?: string;
+  locationLink?: string;
   about: string;
   summary: string;
-  avatar: StaticImageData;
+  avatar?: StaticImageData;
   siteUrl: string;
   personalWebsiteUrl?: string;
   contact: {
-    email: string;
-    tel: string;
+    email?: string;
+    tel?: string;
     social: SocialLink[];
   };
   education: EducationEntry[];

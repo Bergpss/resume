@@ -1,7 +1,7 @@
+import { DateRange } from "@/components/ui/date-range";
 import { ExternalArrow } from "@/components/ui/external-arrow";
 import { Section } from "@/components/ui/section";
 import { TagList } from "@/components/ui/tag-list";
-import { SECTION_TITLES } from "@/data/resume-data";
 import { displayUrl } from "@/lib/resume";
 import type { Project } from "@/lib/types";
 
@@ -31,30 +31,58 @@ function ProjectLink({ title, link }: ProjectLinkProps) {
 
 interface ProjectItemProps {
   project: Project;
+  periodLabel: string;
+  presentLabel: string;
+  technologiesLabel: string;
 }
 
-function ProjectItem({ project }: ProjectItemProps) {
-  const { title, description, techStack, link } = project;
+function ProjectItem({
+  project,
+  periodLabel,
+  presentLabel,
+  technologiesLabel,
+}: ProjectItemProps) {
+  const { title, description, highlights, techStack, link, start, end } =
+    project;
 
   return (
     <>
-      <h3 className="text-sm font-medium leading-snug print:leading-none">
-        <ProjectLink title={title} link={link} />
-      </h3>
-      {link && (
+      <div className="flex items-baseline justify-between gap-x-2">
+        <h3 className="text-sm font-medium leading-snug print:leading-none">
+          <ProjectLink title={title} link={link} />
+        </h3>
+        {start ? (
+          <DateRange
+            start={start}
+            end={end}
+            label={periodLabel}
+            presentLabel={presentLabel}
+          />
+        ) : null}
+      </div>
+      {link ? (
         <a
           className="hidden underline print:block print:break-words print:text-[10px] print:leading-tight"
           href={link}
         >
           {displayUrl(link)}
         </a>
-      )}
-      <p className="mt-1 text-pretty text-xs text-body print:mt-0.5 print:text-[10px] print:leading-tight">
-        {description}
-      </p>
+      ) : null}
+      {description ? (
+        <p className="mt-1 text-pretty text-xs text-body print:mt-0.5 print:text-[10px] print:leading-tight">
+          {description}
+        </p>
+      ) : null}
+      {highlights && highlights.length > 0 ? (
+        <ul className="mt-1.5 list-inside list-disc text-pretty text-xs text-body print:mt-0.5 print:text-[10px] print:leading-tight">
+          {highlights.map((highlight) => (
+            <li key={highlight}>{highlight}</li>
+          ))}
+        </ul>
+      ) : null}
       <TagList
         tags={techStack}
-        label="Technologies used"
+        label={technologiesLabel}
         className="mt-2 print:mt-0.5"
       />
     </>
@@ -63,19 +91,30 @@ function ProjectItem({ project }: ProjectItemProps) {
 
 interface ProjectsProps {
   projects: Project[];
+  title: string;
+  periodLabel: string;
+  presentLabel: string;
+  technologiesLabel: string;
 }
 
-export function Projects({ projects }: ProjectsProps) {
+export function Projects({
+  projects,
+  title,
+  periodLabel,
+  presentLabel,
+  technologiesLabel,
+}: ProjectsProps) {
   return (
-    <Section
-      title={SECTION_TITLES.projects}
-      titleId="side-projects"
-      className="scroll-mb-16"
-    >
-      <div className="grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-2 lg:grid-cols-3 print:grid-cols-3 print:gap-4">
+    <Section title={title} titleId="side-projects" className="scroll-mb-16">
+      <div className="space-y-8 print:space-y-1.5">
         {projects.map((project) => (
           <article key={project.title} className="print:break-inside-avoid">
-            <ProjectItem project={project} />
+            <ProjectItem
+              project={project}
+              periodLabel={periodLabel}
+              presentLabel={presentLabel}
+              technologiesLabel={technologiesLabel}
+            />
           </article>
         ))}
       </div>

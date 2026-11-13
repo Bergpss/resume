@@ -1,9 +1,12 @@
-import { SECTION_TITLES } from "@/data/resume-data";
+import type { SectionKey } from "@/data/resume-data";
+import { getSectionTitles } from "@/data/resume-data";
+import type { Locale } from "@/lib/i18n";
+import { localePath, UI } from "@/lib/i18n";
 import {
   displayUrl,
+  formatDateRange,
   getContactLinks,
   getSections,
-  type SectionKey,
 } from "@/lib/resume";
 import type { ResumeData } from "@/lib/types";
 
@@ -40,39 +43,43 @@ export type Block =
 
 const web = (href: string): Link => ({ href, url: displayUrl(href) });
 
-const dates = (start: string, end: string | null) =>
-  `${start} - ${end ?? "Present"}`;
-
-const sections: Record<SectionKey, (data: ResumeData) => Block[]> = {
+const sections: Record<
+  SectionKey,
+  (data: ResumeData, locale: Locale) => Block[]
+> = {
   summary: ({ summary }) => [{ kind: "paragraph", inlines: [summary] }],
-  work: ({ work }) =>
+  work: ({ work }, locale) =>
     work.map((job) => ({
       kind: "entry",
       name: job.company,
-      link: web(job.link),
-      dates: dates(job.start, job.end),
+      link: job.link ? web(job.link) : undefined,
+      dates: formatDateRange(job.start, job.end, UI[locale].present),
       role: job.title,
       description: job.description,
       highlights: job.highlights ?? [],
       tags: job.badges,
     })),
-  education: ({ education }) =>
+  education: ({ education }, locale) =>
     education.map((school) => ({
       kind: "entry",
       name: school.school,
-      dates: dates(school.start, school.end),
+      dates: formatDateRange(school.start, school.end, UI[locale].present),
       role: school.degree,
       highlights: [],
       tags: [],
     })),
   skills: ({ skills }) => [{ kind: "tags", tags: skills }],
-  projects: ({ projects }) =>
+  projects: ({ projects }, locale) =>
     projects.map((project) => ({
       kind: "entry",
       name: project.title,
       link: project.link ? web(project.link) : undefined,
+      dates:
+        project.start === undefined
+          ? undefined
+          : formatDateRange(project.start, project.end, UI[locale].present),
       description: project.description,
-      highlights: [],
+      highlights: project.highlights ?? [],
       tags: project.techStack,
     })),
 };
@@ -83,44 +90,60 @@ const title = ({ name, about }: ResumeData): Block => ({
   tagline: about,
 });
 
-const body = (data: ResumeData): Block[] => [
-  {
-    kind: "rows",
-    rows: [
-      { label: "Location", text: data.location, link: web(data.locationLink) },
-      ...getContactLinks(data).map(({ label, text, href }) => ({
-        label,
-        text,
-        link: { href, url: text },
-      })),
-    ],
-  },
-  ...getSections(data).flatMap((key): Block[] => [
-    { kind: "heading", text: SECTION_TITLES[key] },
-    ...sections[key](data),
-  ]),
-];
+const contactRows = (data: ResumeData, locale: Locale): Row[] => {
+  const rows: Row[] = [];
+  if (data.location && data.locationLink) {
+    rows.push({
+      label: UI[locale].location,
+      text: data.location,
+      link: web(data.locationLink),
+    });
+  }
+  rows.push(
+    ...getContactLinks(data, locale).map(({ label, text, href }) => ({
+      label,
+      text,
+      link: { href, url: text },
+    }))
+  );
+  return rows;
+};
 
-export function resumeBlocks(data: ResumeData): Block[] {
-  return [title(data), ...body(data)];
+const body = (data: ResumeData, locale: Locale): Block[] => {
+  const titles = getSectionTitles(locale);
+  const rows = contactRows(data, locale);
+  return [
+    ...(rows.length > 0 ? [{ kind: "rows" as const, rows }] : []),
+    ...getSections(data, locale).flatMap((key): Block[] => [
+      { kind: "heading", text: titles[key] },
+      ...sections[key](data, locale),
+    ]),
+  ];
+};
+
+export function resumeBlocks(data: ResumeData, locale: Locale): Block[] {
+  return [title(data), ...body(data, locale)];
 }
 
-export function llmsBlocks(data: ResumeData): Block[] {
+export function llmsBlocks(data: ResumeData, locale: Locale): Block[] {
   const site = new URL(data.siteUrl).origin;
-  return [
-    title(data),
-    {
-      kind: "paragraph",
-      inlines: [
-        "This CV also comes as 80-column text from ",
-        { code: `curl ${site}` },
-        ", and as markdown from ",
-        { code: `${site}/index.md` },
-        " or from any request that sends ",
-        { code: "Accept: text/markdown" },
-        ".",
-      ],
-    },
-    ...body(data),
-  ];
+  const markdown = `${site}${localePath(locale, "/index.md")}`;
+  const text = `${site}${localePath(locale, "/index.txt")}`;
+  const inlines: Inline[] =
+    locale === "zh"
+      ? [
+          "这份简历也提供 Markdown 与 80 列纯文本：",
+          { code: markdown },
+          "、",
+          { code: text },
+          "。",
+        ]
+      : [
+          "This resume is also available as markdown and as 80-column text at ",
+          { code: markdown },
+          " and ",
+          { code: text },
+          ".",
+        ];
+  return [title(data), { kind: "paragraph", inlines }, ...body(data, locale)];
 }
