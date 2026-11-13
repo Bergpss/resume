@@ -540,6 +540,28 @@ const checks = [
         },
       ],
       [
+        `${locale}: section order is about, projects, work, then education`,
+        () => {
+          const expectedKeys = [
+            "summary",
+            "projects",
+            "work",
+            "education",
+            "skills",
+          ];
+          const actualKeys = Object.keys(page.titles);
+          if (actualKeys.join("\n") !== expectedKeys.join("\n")) {
+            return `title keys are ${actualKeys.join(", ")}`;
+          }
+          const expectedHeadings = expectedKeys
+            .filter((key) => hasData(page.data, key))
+            .map((key) => page.titles[key]);
+          if (page.headings.join("\n") !== expectedHeadings.join("\n")) {
+            return `page has ${page.headings.join(", ")}`;
+          }
+        },
+      ],
+      [
         `${locale}: OpenClaw title, dates, and highlights render`,
         () => {
           const project = page.data.projects[0];
