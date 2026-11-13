@@ -473,17 +473,15 @@ const checks = [
         if (icons.join("\n") !== ["x", "douyin", "xiaohongshu"].join("\n")) {
           problems.push(`${locale} platform icons are ${icons.join(", ")}`);
         }
-        if (actual.platforms[0]?.url !== FACTS.xUrl) {
-          problems.push(`${locale} X URL is ${actual.platforms[0]?.url}`);
+        const snapshot = `${FACTS.contentCreation.xFollowers} (${FACTS.contentCreation.xFollowersAsOf})`;
+        if (expected.xNote !== snapshot) {
+          problems.push(`${locale} expected X note drifted from the snapshot`);
         }
-        if (actual.platforms[0]?.note !== expected.xNote) {
+        if (actual.platforms[0]?.note !== snapshot) {
           problems.push(`${locale} X note is ${actual.platforms[0]?.note}`);
         }
-        if (actual.platforms[1]?.url || actual.platforms[2]?.url) {
-          problems.push(`${locale} invents a Douyin or Xiaohongshu URL`);
-        }
-        if (!String(actual.platforms[0]?.note ?? "").includes(String(FACTS.contentCreation.xFollowers))) {
-          problems.push(`${locale} X note is missing the recorded follower count`);
+        if (actual.platforms.some((platform) => platform.url)) {
+          problems.push(`${locale} content platforms still have profile URLs`);
         }
       }
       if (problems.length > 0) return problems.join("; ");
@@ -982,15 +980,22 @@ const checks = [
           const section = page.sections.get(page.titles.contentCreation) ?? "";
           const sectionText = decode(section.replace(/<[^>]+>/g, " "));
           const hrefsInSection = hrefs(section).map(decode);
-          if (!hrefsInSection.includes(FACTS.xUrl)) {
-            problems.push("section is missing the X profile link");
+          if (hrefsInSection.length > 0) {
+            problems.push(`section still has links ${hrefsInSection.join(", ")}`);
           }
-          const unexpected = hrefsInSection.filter((href) => href !== FACTS.xUrl);
-          if (unexpected.length > 0) {
-            problems.push(`section has unexpected links ${unexpected.join(", ")}`);
+          if (section.includes("opens in new tab") || section.includes("ExternalArrow") || section.includes("print:block")) {
+            problems.push("section still has a jump link or print URL");
           }
-          if (!section.includes('aria-label="X (opens in new tab)"')) {
-            problems.push("X link is missing an accessible label");
+          const mdSection = page.markdown.split(`## ${title}`)[1]?.split(/^## /m)[0] ?? "";
+          if (mdSection.includes("](") || mdSection.includes(FACTS.xUrl) || mdSection.includes("x.com/PssBerg")) {
+            problems.push("markdown section still has a profile link");
+          }
+          const textStart = page.text.toLowerCase().indexOf(title.toLowerCase());
+          const workTitle = page.titles.work;
+          const textEnd = page.text.toLowerCase().indexOf(workTitle.toLowerCase(), textStart + 1);
+          const textSection = textStart >= 0 ? page.text.slice(textStart, textEnd >= 0 ? textEnd : undefined) : "";
+          if (textSection.includes("x.com/PssBerg") || textSection.includes(FACTS.xUrl)) {
+            problems.push("text section still has a profile link");
           }
           if (!section.includes("<title>X</title>")) {
             problems.push("X logo is missing an accessible title");
@@ -1030,8 +1035,16 @@ const checks = [
             "widgets.js",
             "api.x.com",
             "pulse.walls.sh",
+            "接近 1,000",
+            "接近1000",
+            "approaching 1,000",
+            "approaching 1000",
+            "关注者",
+            "记录",
+            "followers as of",
+            "as of Nov",
           ];
-          const surfaces = [sectionText, htmlFolded, textFolded, page.markdown];
+          const surfaces = [sectionText, section, mdSection, textSection];
           for (const needle of banned) {
             if (surfaces.some((surface) => surface.includes(needle))) {
               problems.push(`content creation shows ${needle}`);
