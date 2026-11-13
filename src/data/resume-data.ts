@@ -20,6 +20,11 @@ export const FACTS = {
     start: "2018-09",
     end: "2022-06",
   },
+  work: {
+    company: "北京南北天地科技股份有限公司",
+    start: "2022-09",
+    end: "2025-05",
+  },
 } as const;
 
 export const EXPECTED_OPENCLAW_HIGHLIGHTS = {
@@ -47,6 +52,21 @@ export const EXPECTED_EDUCATION = {
   },
 } as const;
 
+export const EXPECTED_WORK = {
+  zh: {
+    company: "北京南北天地科技股份有限公司",
+    title: "Java 开发工程师",
+    period: "2022年9月—2025年5月",
+    highlights: ["参与 ERP 产品研发。"],
+  },
+  en: {
+    company: "北京南北天地科技股份有限公司",
+    title: "Java Developer",
+    period: "Sep 2022–May 2025",
+    highlights: ["Worked on ERP product development."],
+  },
+} as const;
+
 const copy: Record<
   Locale,
   {
@@ -57,6 +77,9 @@ const copy: Record<
     educationSchool: string;
     educationDegree: string;
     educationPeriod: string;
+    workTitle: string;
+    workPeriod: string;
+    workHighlights: readonly [string];
   }
 > = {
   zh: {
@@ -72,6 +95,9 @@ const copy: Record<
     educationDegree:
       "计算机科学与技术学院 · 本科，计算机科学与技术（人工智能方向）",
     educationPeriod: "2018年9月—2022年6月",
+    workTitle: "Java 开发工程师",
+    workPeriod: "2022年9月—2025年5月",
+    workHighlights: ["参与 ERP 产品研发。"],
   },
   en: {
     about:
@@ -87,6 +113,9 @@ const copy: Record<
     educationDegree:
       "College of Computer Science and Technology · Bachelor's, Computer Science and Technology (Artificial Intelligence)",
     educationPeriod: "Sep 2018–Jun 2022",
+    workTitle: "Java Developer",
+    workPeriod: "Sep 2022–May 2025",
+    workHighlights: ["Worked on ERP product development."],
   },
 };
 
@@ -140,7 +169,18 @@ export function getResumeData(locale: Locale): ResumeData {
         period: text.educationPeriod,
       },
     ],
-    work: [],
+    work: [
+      {
+        company: FACTS.work.company,
+        badges: [],
+        title: text.workTitle,
+        start: FACTS.work.start,
+        end: FACTS.work.end,
+        period: text.workPeriod,
+        description: "",
+        highlights: [...text.workHighlights],
+      },
+    ],
     skills: [],
     projects: [
       {

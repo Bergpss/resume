@@ -15,6 +15,7 @@ export interface WorkEntry {
   title: string;
   start: string;
   end: string | null;
+  period: string;
   description: string;
   highlights?: string[];
 }

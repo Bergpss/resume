@@ -1,4 +1,3 @@
-import { DateRange } from "@/components/ui/date-range";
 import { ExternalArrow } from "@/components/ui/external-arrow";
 import { Section } from "@/components/ui/section";
 import { TagList } from "@/components/ui/tag-list";
@@ -31,18 +30,17 @@ function CompanyLink({ company, link }: CompanyLinkProps) {
 interface WorkExperienceItemProps {
   work: WorkEntry;
   periodLabel: string;
-  presentLabel: string;
   technologiesLabel: string;
 }
 
 function WorkExperienceItem({
   work,
   periodLabel,
-  presentLabel,
   technologiesLabel,
 }: WorkExperienceItemProps) {
-  const { company, link, badges, title, start, end, description, highlights } =
+  const { company, link, badges, title, period, description, highlights } =
     work;
+  const items = highlights ?? [];
 
   return (
     <>
@@ -51,27 +49,29 @@ function WorkExperienceItem({
           <h3 className="text-sm font-medium leading-snug print:leading-none">
             <CompanyLink company={company} link={link} />
           </h3>
-          <DateRange
-            start={start}
-            end={end}
-            label={periodLabel}
-            presentLabel={presentLabel}
-          />
+          <div
+            className="shrink-0 text-[13px] tabular-nums text-muted-foreground print:leading-none"
+            title={`${periodLabel}: ${period}`}
+          >
+            {period}
+          </div>
         </div>
         <h4 className="text-sm leading-snug text-body print:text-[12px] print:leading-tight">
           {title}
         </h4>
       </div>
-      <div className="mt-1.5 text-pretty text-xs text-body print:mt-0.5 print:text-[10px] print:leading-tight">
-        {description}
-        {highlights && highlights.length > 0 && (
-          <ul className="list-inside list-disc">
-            {highlights.map((highlight) => (
-              <li key={highlight}>{highlight}</li>
-            ))}
-          </ul>
-        )}
-      </div>
+      {description || items.length > 0 ? (
+        <div className="mt-1.5 text-pretty text-xs text-body print:mt-0.5 print:text-[10px] print:leading-tight">
+          {description ? description : null}
+          {items.length > 0 ? (
+            <ul className="list-inside list-disc">
+              {items.map((highlight) => (
+                <li key={highlight}>{highlight}</li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      ) : null}
       <TagList
         tags={badges}
         label={technologiesLabel}
@@ -93,7 +93,6 @@ export function WorkExperience({
   work,
   title,
   periodLabel,
-  presentLabel,
   technologiesLabel,
 }: WorkExperienceProps) {
   return (
@@ -107,7 +106,6 @@ export function WorkExperience({
             <WorkExperienceItem
               work={item}
               periodLabel={periodLabel}
-              presentLabel={presentLabel}
               technologiesLabel={technologiesLabel}
             />
           </article>
