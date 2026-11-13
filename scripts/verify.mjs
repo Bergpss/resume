@@ -34,6 +34,7 @@ module.registerHooks({ load: loadTypeScriptAsModules });
 module.registerHooks({ resolve: resolveAlias });
 
 const {
+  EXPECTED_CONTENT_CREATION,
   EXPECTED_EDUCATION,
   EXPECTED_HERMES_CAD,
   EXPECTED_OPENCLAW_HIGHLIGHTS,
@@ -435,6 +436,59 @@ const checks = [
       if (problems.length > 0) return problems.join("; ");
     },
   ],
+
+  [
+    "content creation facts stay in sync with the confirmed copy",
+    () => {
+      const problems = [];
+      if (FACTS.contentCreation.xFollowers !== 948) {
+        problems.push(`xFollowers is ${FACTS.contentCreation.xFollowers}`);
+      }
+      if (FACTS.contentCreation.xFollowersAsOf !== "2026-11-13") {
+        problems.push(`xFollowersAsOf is ${FACTS.contentCreation.xFollowersAsOf}`);
+      }
+      if (FACTS.contentCreation.xFollowers >= 1000) {
+        problems.push("follower snapshot claims 1,000 or more");
+      }
+      for (const locale of LOCALES) {
+        const actual = getResumeData(locale).contentCreation[0];
+        const expected = EXPECTED_CONTENT_CREATION[locale];
+        if (!actual) {
+          problems.push(`${locale} is missing content creation`);
+          continue;
+        }
+        if (getResumeData(locale).contentCreation.length !== 1) {
+          problems.push(
+            `${locale} has ${getResumeData(locale).contentCreation.length} content creation entries`
+          );
+        }
+        if ((actual.highlights ?? []).join("\n") !== expected.highlights.join("\n")) {
+          problems.push(`${locale} content highlights drifted from the confirmed copy`);
+        }
+        const names = actual.platforms.map((platform) => platform.name);
+        if (names.join("\n") !== expected.platforms.join("\n")) {
+          problems.push(`${locale} platforms are ${names.join(", ")}`);
+        }
+        const icons = actual.platforms.map((platform) => platform.icon);
+        if (icons.join("\n") !== ["x", "douyin", "xiaohongshu"].join("\n")) {
+          problems.push(`${locale} platform icons are ${icons.join(", ")}`);
+        }
+        if (actual.platforms[0]?.url !== FACTS.xUrl) {
+          problems.push(`${locale} X URL is ${actual.platforms[0]?.url}`);
+        }
+        if (actual.platforms[0]?.note !== expected.xNote) {
+          problems.push(`${locale} X note is ${actual.platforms[0]?.note}`);
+        }
+        if (actual.platforms[1]?.url || actual.platforms[2]?.url) {
+          problems.push(`${locale} invents a Douyin or Xiaohongshu URL`);
+        }
+        if (!String(actual.platforms[0]?.note ?? "").includes(String(FACTS.contentCreation.xFollowers))) {
+          problems.push(`${locale} X note is missing the recorded follower count`);
+        }
+      }
+      if (problems.length > 0) return problems.join("; ");
+    },
+  ],
   [
     "built files exist for both locales and the root redirect",
     () => {
@@ -607,11 +661,12 @@ const checks = [
         },
       ],
       [
-        `${locale}: section order is projects, work, then education`,
+        `${locale}: section order is projects, content creation, work, then education`,
         () => {
           const expectedKeys = [
             "summary",
             "projects",
+            "contentCreation",
             "work",
             "education",
             "skills",
@@ -627,7 +682,10 @@ const checks = [
             return `page has ${page.headings.join(", ")}`;
           }
           const published = expectedKeys.filter((key) => hasData(page.data, key));
-          if (published.join("\n") !== ["projects", "work", "education"].join("\n")) {
+          if (
+            published.join("\n") !==
+            ["projects", "contentCreation", "work", "education"].join("\n")
+          ) {
             return `published sections are ${published.join(", ")}`;
           }
         },
@@ -885,6 +943,98 @@ const checks = [
           ]) {
             if (sectionText.includes(banned) || entry.period.includes(banned)) {
               problems.push(`work shows ${banned}`);
+            }
+          }
+          if (problems.length > 0) return problems.join("; ");
+        },
+      ],
+
+      [
+        `${locale}: content creation copy, platforms, and X snapshot render`,
+        () => {
+          const entry = page.data.contentCreation[0];
+          if (!entry) return "no content creation entry";
+          const problems = [];
+          const htmlFolded = decode(page.html.replace(/<[^>]+>/g, " ")).replace(
+            /\s+/g,
+            " "
+          );
+          const textFolded = page.text.replace(/\s+/g, " ");
+          const expected = EXPECTED_CONTENT_CREATION[locale];
+          const title = page.titles.contentCreation;
+          if (!htmlFolded.includes(title)) problems.push(`html lacks ${title}`);
+          if (!page.markdown.includes(title)) problems.push(`markdown lacks ${title}`);
+          if (!textFolded.includes(title.toLowerCase())) {
+            problems.push(`text lacks ${title.toLowerCase()}`);
+          }
+          for (const value of [
+            ...entry.highlights,
+            ...entry.platforms.map((platform) => platform.name),
+            entry.platforms[0]?.note,
+          ]) {
+            const needle = value.replace(/\s+/g, " ");
+            if (!htmlFolded.includes(needle)) problems.push(`html lacks ${value}`);
+            if (!page.markdown.includes(value)) {
+              problems.push(`markdown lacks ${value}`);
+            }
+            if (!textFolded.includes(needle)) problems.push(`text lacks ${value}`);
+          }
+          const section = page.sections.get(page.titles.contentCreation) ?? "";
+          const sectionText = decode(section.replace(/<[^>]+>/g, " "));
+          const hrefsInSection = hrefs(section).map(decode);
+          if (!hrefsInSection.includes(FACTS.xUrl)) {
+            problems.push("section is missing the X profile link");
+          }
+          const unexpected = hrefsInSection.filter((href) => href !== FACTS.xUrl);
+          if (unexpected.length > 0) {
+            problems.push(`section has unexpected links ${unexpected.join(", ")}`);
+          }
+          if (!section.includes('aria-label="X (opens in new tab)"')) {
+            problems.push("X link is missing an accessible label");
+          }
+          if (!section.includes("<title>X</title>")) {
+            problems.push("X logo is missing an accessible title");
+          }
+          if (!section.includes("<title>Douyin</title>")) {
+            problems.push("Douyin logo is missing an accessible title");
+          }
+          if (!section.includes("<title>Xiaohongshu</title>")) {
+            problems.push("Xiaohongshu logo is missing an accessible title");
+          }
+          const names = [...section.matchAll(/<span class="font-medium">(.*?)<\/span>/g)].map(
+            ([, name]) => decode(name)
+          );
+          if (names.join("\n") !== expected.platforms.join("\n")) {
+            problems.push(`visible platform names are ${names.join(", ") || "missing"}`);
+          }
+          const banned = [
+            "实时",
+            "real-time",
+            "realtime",
+            "live follower",
+            "live count",
+            "已达 1,000",
+            "已破 1,000",
+            "already 1,000",
+            "already 1000",
+            "1,000 followers",
+            "1000 followers",
+            "5.6 万粉丝",
+            "5.6万粉丝",
+            "56,000 followers",
+            "56000 followers",
+            "douyin.com",
+            "xiaohongshu.com",
+            "xhslink.com",
+            "iesdouyin",
+            "widgets.js",
+            "api.x.com",
+            "pulse.walls.sh",
+          ];
+          const surfaces = [sectionText, htmlFolded, textFolded, page.markdown];
+          for (const needle of banned) {
+            if (surfaces.some((surface) => surface.includes(needle))) {
+              problems.push(`content creation shows ${needle}`);
             }
           }
           if (problems.length > 0) return problems.join("; ");

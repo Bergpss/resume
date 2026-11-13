@@ -33,13 +33,24 @@ export interface Entry {
 
 export type Inline = string | { code: string };
 
+export interface PlatformLine {
+  name: string;
+  link?: Link;
+  note?: string;
+}
+
 export type Block =
   | { kind: "title"; name: string; tagline: string }
   | { kind: "rows"; rows: Row[] }
   | { kind: "heading"; text: string }
   | { kind: "paragraph"; inlines: Inline[] }
   | ({ kind: "entry" } & Entry)
-  | { kind: "tags"; tags: string[] };
+  | { kind: "tags"; tags: string[] }
+  | {
+      kind: "contentCreation";
+      highlights: string[];
+      platforms: PlatformLine[];
+    };
 
 const web = (href: string): Link => ({ href, url: displayUrl(href) });
 
@@ -69,6 +80,16 @@ const sections: Record<
       tags: [],
     })),
   skills: ({ skills }) => [{ kind: "tags", tags: skills }],
+  contentCreation: ({ contentCreation }) =>
+    contentCreation.map((entry) => ({
+      kind: "contentCreation" as const,
+      highlights: entry.highlights,
+      platforms: entry.platforms.map((platform) => ({
+        name: platform.name,
+        link: platform.url ? web(platform.url) : undefined,
+        note: platform.note,
+      })),
+    })),
   projects: ({ projects }, locale) =>
     projects.map((project) => ({
       kind: "entry",

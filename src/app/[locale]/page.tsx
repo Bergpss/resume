@@ -7,6 +7,7 @@ import { getResumeData, getSectionTitles } from "@/data/resume-data";
 import { isLocale, localePath, otherLocale, UI } from "@/lib/i18n";
 import { getContactLinks, getSections } from "@/lib/resume";
 import { generateResumeStructuredData } from "@/lib/structured-data";
+import { ContentCreation } from "../components/content-creation";
 import { Education } from "../components/education";
 import { Header } from "../components/header";
 import { Projects } from "../components/projects";
@@ -76,6 +77,14 @@ export default async function ResumePage({
         technologiesLabel={ui.technologiesUsed}
       />
     ),
+    contentCreation: data.contentCreation[0] ? (
+      <ContentCreation
+        title={titles.contentCreation}
+        highlights={data.contentCreation[0].highlights}
+        platforms={data.contentCreation[0].platforms}
+        platformsLabel={ui.platformsLabel}
+      />
+    ) : null,
   };
 
   return (

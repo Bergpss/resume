@@ -23,6 +23,21 @@ function markdown(part: Block): string {
       return entry(part);
     case "tags":
       return line(part.tags.join(" · "));
+    case "contentCreation":
+      return [
+        part.highlights.map((item) => `- ${line(item)}`).join("\n"),
+        part.platforms
+          .map((platform) => {
+            const name = platform.link
+              ? anchor(escapeText(platform.name), platform.link.href)
+              : escapeText(platform.name);
+            const note = platform.note ? ` — ${line(platform.note)}` : "";
+            return `- ${name}${note}`;
+          })
+          .join("\n"),
+      ]
+        .filter(Boolean)
+        .join("\n\n");
   }
 }
 
