@@ -82,13 +82,21 @@ export const EXPECTED_WORK = {
     company: "北京南北天地科技股份有限公司",
     title: "Java 开发工程师",
     period: "2022年9月—2025年5月",
-    highlights: ["参与 ERP 产品研发。"],
+    highlights: [
+      "参与 ERP 产品研发，在大客户现场驻场开发。",
+      "独立与运维同事及客户沟通需求，完成业务定制开发。",
+      "优先使用 AI 工具辅助日常开发，并制作可复用的通用工具，减少重复劳动。",
+    ],
   },
   en: {
     company: "Beijing Snsoft Technology Co.,Ltd",
     title: "Java Developer",
     period: "Sep 2022–May 2025",
-    highlights: ["Worked on ERP product development."],
+    highlights: [
+      "Worked on ERP product development and on-site customization for major clients.",
+      "Independently clarified requirements with operations colleagues and clients and implemented business-specific customizations.",
+      "Used AI tools in day-to-day development and built reusable utilities to reduce repetitive work.",
+    ],
   },
 } as const;
 
@@ -103,7 +111,7 @@ const copy: Record<
     educationPeriod: string;
     workTitle: string;
     workPeriod: string;
-    workHighlights: readonly [string];
+    workHighlights: readonly [string, string, string];
     hermesTitle: string;
     hermesPeriod: string;
     hermesHighlights: readonly [string, string, string];
@@ -122,7 +130,11 @@ const copy: Record<
     educationPeriod: "2018年9月—2022年6月",
     workTitle: "Java 开发工程师",
     workPeriod: "2022年9月—2025年5月",
-    workHighlights: ["参与 ERP 产品研发。"],
+    workHighlights: [
+      "参与 ERP 产品研发，在大客户现场驻场开发。",
+      "独立与运维同事及客户沟通需求，完成业务定制开发。",
+      "优先使用 AI 工具辅助日常开发，并制作可复用的通用工具，减少重复劳动。",
+    ],
     hermesTitle: "Hermes Agent CAD 读取 Skill",
     hermesPeriod: "2026年9月",
     hermesHighlights: [
@@ -145,7 +157,11 @@ const copy: Record<
     educationPeriod: "Sep 2018–Jun 2022",
     workTitle: "Java Developer",
     workPeriod: "Sep 2022–May 2025",
-    workHighlights: ["Worked on ERP product development."],
+    workHighlights: [
+      "Worked on ERP product development and on-site customization for major clients.",
+      "Independently clarified requirements with operations colleagues and clients and implemented business-specific customizations.",
+      "Used AI tools in day-to-day development and built reusable utilities to reduce repetitive work.",
+    ],
     hermesTitle: "CAD Reading Skill for Hermes Agent",
     hermesPeriod: "Sep 2026",
     hermesHighlights: [
