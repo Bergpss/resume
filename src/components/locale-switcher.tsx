@@ -13,13 +13,16 @@ export function LocaleSwitcher({ locale }: LocaleSwitcherProps) {
   ];
 
   return (
-    <nav aria-label={ui.language} className="flex items-center gap-1">
+    <nav aria-label={ui.language} className="flex items-center gap-0.5">
       {options.map((option, index) => {
         const current = option.locale === locale;
         return (
           <span key={option.locale} className="inline-flex items-center">
             {index > 0 ? (
-              <span className="px-1 text-muted-foreground" aria-hidden="true">
+              <span
+                className="px-0.5 text-xs text-muted-foreground"
+                aria-hidden="true"
+              >
                 /
               </span>
             ) : null}
@@ -29,8 +32,8 @@ export function LocaleSwitcher({ locale }: LocaleSwitcherProps) {
               lang={option.locale === "zh" ? "zh-CN" : "en"}
               className={
                 current
-                  ? "inline-flex min-h-11 items-center px-1.5 text-sm text-foreground underline"
-                  : "inline-flex min-h-11 items-center px-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground hover:underline"
+                  ? "inline-flex min-h-9 items-center px-1 text-xs text-foreground underline"
+                  : "inline-flex min-h-9 items-center px-1 text-xs text-muted-foreground transition-colors hover:text-foreground hover:underline"
               }
               aria-current={current ? "page" : undefined}
             >
