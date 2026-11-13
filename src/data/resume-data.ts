@@ -25,6 +25,9 @@ export const FACTS = {
     start: "2022-09",
     end: "2025-05",
   },
+  hermesCad: {
+    start: "2026-09",
+  },
 } as const;
 
 export const EXPECTED_OPENCLAW_HIGHLIGHTS = {
@@ -49,6 +52,27 @@ export const EXPECTED_EDUCATION = {
     degree:
       "College of Computer Science and Technology · Bachelor's, Computer Science and Technology (Artificial Intelligence)",
     period: "Sep 2018–Jun 2022",
+  },
+} as const;
+
+export const EXPECTED_HERMES_CAD = {
+  zh: {
+    title: "Hermes Agent CAD 读取 Skill",
+    period: "2026年9月",
+    highlights: [
+      "为长期工程领域客户定制 CAD 读取 Skill，处理天正施工图（DWG/DXF）。天正自定义 TCH 实体没有代理图形，普通工具读不到标注。",
+      "按图框、视口与分图标题位置归组说明、材料引注和尺寸，输出 Markdown。主路径由看图软件先转为 T3 通用图纸，再用 Python ezdxf 提取，DWG 经 LibreDWG dwg2dxf 转换；无法转 T3 时，用 LibreDWG dwgread JSON 启发式解码自定义实体，并提示可能遗漏或错误，关键数字需复核。",
+      "交付 Skill 包、指南与 Hermes 使用提示词。客户反馈：其图纸算量工作流由数天缩短至数分钟（客户自述整体 AI 辅助工作流，未独立测量）。",
+    ],
+  },
+  en: {
+    title: "CAD Reading Skill for Hermes Agent",
+    period: "Sep 2026",
+    highlights: [
+      "Built a CAD reading Skill for a long-term client in the engineering field to work with Tianzheng (天正) construction drawings (DWG/DXF). Custom TCH entities have no proxy graphics, so ordinary tools cannot read the annotations.",
+      "Groups notes, material callouts, and dimensions by title block, viewport, and sheet-title position, and writes Markdown. The main path converts drawings to the generic T3 format in a viewer, then extracts them with Python ezdxf; DWG files go through LibreDWG dwg2dxf. When T3 conversion is not available, a fallback heuristically decodes custom entities from LibreDWG dwgread JSON and flags possible omissions or errors so key figures can be checked.",
+      "Delivered the Skill package, a guide, and Hermes prompts. Client feedback: their drawing quantity takeoff workflow went from several days to a few minutes (the client's own account of the overall AI-assisted workflow; not independently measured).",
+    ],
   },
 } as const;
 
@@ -80,6 +104,9 @@ const copy: Record<
     workTitle: string;
     workPeriod: string;
     workHighlights: readonly [string];
+    hermesTitle: string;
+    hermesPeriod: string;
+    hermesHighlights: readonly [string, string, string];
   }
 > = {
   zh: {
@@ -98,6 +125,13 @@ const copy: Record<
     workTitle: "Java 开发工程师",
     workPeriod: "2022年9月—2025年5月",
     workHighlights: ["参与 ERP 产品研发。"],
+    hermesTitle: "Hermes Agent CAD 读取 Skill",
+    hermesPeriod: "2026年9月",
+    hermesHighlights: [
+      "为长期工程领域客户定制 CAD 读取 Skill，处理天正施工图（DWG/DXF）。天正自定义 TCH 实体没有代理图形，普通工具读不到标注。",
+      "按图框、视口与分图标题位置归组说明、材料引注和尺寸，输出 Markdown。主路径由看图软件先转为 T3 通用图纸，再用 Python ezdxf 提取，DWG 经 LibreDWG dwg2dxf 转换；无法转 T3 时，用 LibreDWG dwgread JSON 启发式解码自定义实体，并提示可能遗漏或错误，关键数字需复核。",
+      "交付 Skill 包、指南与 Hermes 使用提示词。客户反馈：其图纸算量工作流由数天缩短至数分钟（客户自述整体 AI 辅助工作流，未独立测量）。",
+    ],
   },
   en: {
     about:
@@ -116,6 +150,13 @@ const copy: Record<
     workTitle: "Java Developer",
     workPeriod: "Sep 2022–May 2025",
     workHighlights: ["Worked on ERP product development."],
+    hermesTitle: "CAD Reading Skill for Hermes Agent",
+    hermesPeriod: "Sep 2026",
+    hermesHighlights: [
+      "Built a CAD reading Skill for a long-term client in the engineering field to work with Tianzheng (天正) construction drawings (DWG/DXF). Custom TCH entities have no proxy graphics, so ordinary tools cannot read the annotations.",
+      "Groups notes, material callouts, and dimensions by title block, viewport, and sheet-title position, and writes Markdown. The main path converts drawings to the generic T3 format in a viewer, then extracts them with Python ezdxf; DWG files go through LibreDWG dwg2dxf. When T3 conversion is not available, a fallback heuristically decodes custom entities from LibreDWG dwgread JSON and flags possible omissions or errors so key figures can be checked.",
+      "Delivered the Skill package, a guide, and Hermes prompts. Client feedback: their drawing quantity takeoff workflow went from several days to a few minutes (the client's own account of the overall AI-assisted workflow; not independently measured).",
+    ],
   },
 };
 
@@ -183,6 +224,13 @@ export function getResumeData(locale: Locale): ResumeData {
     ],
     skills: [],
     projects: [
+      {
+        title: text.hermesTitle,
+        start: FACTS.hermesCad.start,
+        period: text.hermesPeriod,
+        highlights: [...text.hermesHighlights],
+        techStack: [],
+      },
       {
         title: text.openclawTitle,
         start: FACTS.openclaw.start,

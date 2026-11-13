@@ -35,6 +35,7 @@ module.registerHooks({ resolve: resolveAlias });
 
 const {
   EXPECTED_EDUCATION,
+  EXPECTED_HERMES_CAD,
   EXPECTED_OPENCLAW_HIGHLIGHTS,
   EXPECTED_WORK,
   FACTS,
@@ -266,10 +267,65 @@ const checks = [
         problems.push(`end is ${FACTS.openclaw.end}`);
       }
       for (const locale of LOCALES) {
-        const actual = getResumeData(locale).projects[0]?.highlights ?? [];
+        const projects = getResumeData(locale).projects;
+        const actual =
+          projects.find((project) => project.start === FACTS.openclaw.start)?.highlights ??
+          [];
         const expected = EXPECTED_OPENCLAW_HIGHLIGHTS[locale];
         if (actual.join("\n") !== expected.join("\n")) {
           problems.push(`${locale} highlights drifted from the confirmed copy`);
+        }
+        if (projects[1]?.start !== FACTS.openclaw.start) {
+          problems.push(`${locale} OpenClaw is not the second project`);
+        }
+      }
+      if (problems.length > 0) return problems.join("; ");
+    },
+  ],
+  [
+    "Hermes CAD Skill facts stay in sync with the confirmed copy",
+    () => {
+      const problems = [];
+      if (FACTS.hermesCad.start !== "2026-09") {
+        problems.push(`start is ${FACTS.hermesCad.start}`);
+      }
+      if ("end" in FACTS.hermesCad) {
+        problems.push("Hermes CAD should not have a precise end date");
+      }
+      for (const locale of LOCALES) {
+        const projects = getResumeData(locale).projects;
+        const actual = projects[0];
+        const expected = EXPECTED_HERMES_CAD[locale];
+        if (!actual) {
+          problems.push(`${locale} is missing the Hermes CAD project`);
+          continue;
+        }
+        if (projects.length !== 2) {
+          problems.push(`${locale} has ${projects.length} projects`);
+        }
+        if (actual.title !== expected.title) {
+          problems.push(`${locale} title is ${actual.title}`);
+        }
+        if (actual.period !== expected.period) {
+          problems.push(`${locale} period is ${actual.period}`);
+        }
+        if ((actual.highlights ?? []).join("\n") !== expected.highlights.join("\n")) {
+          problems.push(`${locale} Hermes highlights drifted from the confirmed copy`);
+        }
+        if (actual.start !== FACTS.hermesCad.start) {
+          problems.push(`${locale} start is ${actual.start}`);
+        }
+        if (actual.end != null) {
+          problems.push(`${locale} has an end date ${actual.end}`);
+        }
+        if ((actual.techStack ?? []).length > 0) {
+          problems.push(`${locale} invents a tech stack list`);
+        }
+        if (actual.link) {
+          problems.push(`${locale} invents a project link`);
+        }
+        if (actual.description) {
+          problems.push(`${locale} has a description beyond the confirmed bullets`);
         }
       }
       if (problems.length > 0) return problems.join("; ");
@@ -564,7 +620,10 @@ const checks = [
       [
         `${locale}: OpenClaw title, dates, and highlights render`,
         () => {
-          const project = page.data.projects[0];
+          const project = page.data.projects.find(
+            (entry) => entry.start === FACTS.openclaw.start
+          );
+          if (!project) return "no OpenClaw project";
           const problems = [];
           const htmlText = decode(page.html.replace(/<[^>]+>/g, " "));
           const folded = (value) => value.replace(/\s+/g, " ");
@@ -585,6 +644,80 @@ const checks = [
             }
             if (!textFolded.includes(needle)) {
               problems.push(`text lacks ${value}`);
+            }
+          }
+          if (problems.length > 0) return problems.join("; ");
+        },
+      ],
+      [
+        `${locale}: Hermes CAD title, period, and highlights render first`,
+        () => {
+          const project = page.data.projects[0];
+          const expected = EXPECTED_HERMES_CAD[locale];
+          if (!project) return "no Hermes CAD project";
+          if (project.title !== expected.title) {
+            return `first project is ${project.title}`;
+          }
+          const problems = [];
+          const htmlFolded = decode(page.html.replace(/<[^>]+>/g, " ")).replace(
+            /\s+/g,
+            " "
+          );
+          const textFolded = page.text.replace(/\s+/g, " ");
+          for (const value of [
+            project.title,
+            project.period,
+            ...(project.highlights ?? []),
+          ]) {
+            const needle = value.replace(/\s+/g, " ");
+            if (!htmlFolded.includes(needle)) problems.push(`html lacks ${value}`);
+            if (!page.markdown.includes(value)) {
+              problems.push(`markdown lacks ${value}`);
+            }
+            if (!textFolded.includes(needle)) problems.push(`text lacks ${value}`);
+          }
+          const section = page.sections.get(page.titles.projects) ?? "";
+          const articlesHtml = [...section.matchAll(/<article\b.*?<\/article>/gs)];
+          if (articlesHtml.length !== page.data.projects.length) {
+            problems.push(`project articles are ${articlesHtml.length}`);
+          }
+          const first = articlesHtml[0]?.[0] ?? "";
+          const firstText = decode(first.replace(/<[^>]+>/g, " "));
+          if (!firstText.includes(project.title) || !firstText.includes(project.period)) {
+            problems.push("first project article is not the Hermes CAD Skill");
+          }
+          const banned = [
+            "至今",
+            "Present",
+            "2026-09-01",
+            "90%",
+            "80%",
+            "准确率",
+            "地产公司",
+            "建筑公司",
+            "围墙详图",
+            "建设单位",
+            "通用 CAD 引擎",
+            "general-purpose CAD engine",
+            "real estate",
+          ];
+          for (const needle of banned) {
+            if (firstText.includes(needle) || (project.period ?? "").includes(needle)) {
+              problems.push(`Hermes CAD shows ${needle}`);
+            }
+          }
+          const feedback = {
+            zh: ["客户反馈", "客户自述", "未独立测量", "AI 辅助工作流"],
+            en: [
+              "Client feedback",
+              "client's own account",
+              "not independently measured",
+              "AI-assisted workflow",
+            ],
+          }[locale];
+          for (const needle of feedback) {
+            if (!firstText.includes(needle) && !htmlFolded.includes(needle)) {
+              problems.push(`feedback lacks ${needle}`);
             }
           }
           if (problems.length > 0) return problems.join("; ");

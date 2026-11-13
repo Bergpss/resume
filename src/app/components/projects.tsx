@@ -42,8 +42,16 @@ function ProjectItem({
   presentLabel,
   technologiesLabel,
 }: ProjectItemProps) {
-  const { title, description, highlights, techStack, link, start, end } =
-    project;
+  const {
+    title,
+    description,
+    highlights,
+    techStack,
+    link,
+    start,
+    end,
+    period,
+  } = project;
 
   return (
     <>
@@ -51,7 +59,14 @@ function ProjectItem({
         <h3 className="text-sm font-medium leading-snug print:leading-none">
           <ProjectLink title={title} link={link} />
         </h3>
-        {start ? (
+        {period ? (
+          <div
+            className="shrink-0 text-[13px] tabular-nums text-muted-foreground print:leading-none"
+            title={`${periodLabel}: ${period}`}
+          >
+            {period}
+          </div>
+        ) : start ? (
           <DateRange
             start={start}
             end={end}

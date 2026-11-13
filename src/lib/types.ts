@@ -36,6 +36,7 @@ export interface Project {
   highlights?: string[];
   start?: string;
   end?: string | null;
+  period?: string;
   link?: string;
 }
 
