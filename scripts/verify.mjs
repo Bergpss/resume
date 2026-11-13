@@ -34,6 +34,7 @@ module.registerHooks({ load: loadTypeScriptAsModules });
 module.registerHooks({ resolve: resolveAlias });
 
 const {
+  EXPECTED_EDUCATION,
   EXPECTED_OPENCLAW_HIGHLIGHTS,
   FACTS,
   getResumeData,
@@ -274,6 +275,45 @@ const checks = [
     },
   ],
   [
+    "education facts stay in sync with the confirmed copy",
+    () => {
+      const problems = [];
+      if (FACTS.education.start !== "2018-09") {
+        problems.push(`start is ${FACTS.education.start}`);
+      }
+      if (FACTS.education.end !== "2022-06") {
+        problems.push(`end is ${FACTS.education.end}`);
+      }
+      if (FACTS.education.cet4Score !== 530) {
+        problems.push(`cet4Score is ${FACTS.education.cet4Score}`);
+      }
+      for (const locale of LOCALES) {
+        const actual = getResumeData(locale).education[0];
+        const expected = EXPECTED_EDUCATION[locale];
+        if (!actual) {
+          problems.push(`${locale} is missing education`);
+          continue;
+        }
+        if (actual.school !== expected.school) {
+          problems.push(`${locale} school is ${actual.school}`);
+        }
+        if (actual.degree !== expected.degree) {
+          problems.push(`${locale} degree is ${actual.degree}`);
+        }
+        if (actual.period !== expected.period) {
+          problems.push(`${locale} period is ${actual.period}`);
+        }
+        if ((actual.highlights ?? []).join("\n") !== expected.highlights.join("\n")) {
+          problems.push(`${locale} education highlights drifted`);
+        }
+        if (actual.end !== FACTS.education.end) {
+          problems.push(`${locale} education end is ${actual.end}`);
+        }
+      }
+      if (problems.length > 0) return problems.join("; ");
+    },
+  ],
+  [
     "built files exist for both locales and the root redirect",
     () => {
       const missing = [
@@ -305,14 +345,14 @@ const checks = [
     const canonical = new URL(localePath(locale), site).href;
     return [
       [
-        `${locale}: exactly one <h1> named ${FACTS.name}`,
+        `${locale}: exactly one <h1> named ${FACTS.names[locale]}`,
         () => {
           const count = page.html.match(/<h1[\s>]/g)?.length ?? 0;
           if (count !== 1) return `found ${count}`;
           const name = decode(
             page.html.match(/<h1\b[^>]*>(.*?)<\/h1>/s)?.[1] ?? ""
           );
-          if (name !== FACTS.name) return `h1 is ${name}`;
+          if (name !== FACTS.names[locale]) return `h1 is ${name}`;
         },
       ],
       [
@@ -324,7 +364,7 @@ const checks = [
           const title = decode(
             page.html.match(/<title>(.*?)<\/title>/)?.[1] ?? ""
           );
-          const expected = `${FACTS.name} - ${ui.pageTitleFallback}`;
+          const expected = `${FACTS.names[locale]} - ${ui.pageTitleFallback}`;
           if (title !== expected) return `title is ${title}`;
         },
       ],
@@ -400,7 +440,16 @@ const checks = [
             if (blob.includes("estimatedSalary")) return "has estimatedSalary";
             if (blob.includes("jobTitle")) return "has jobTitle";
             if (blob.includes("worksFor")) return "has worksFor";
-            if (blob.includes("alumniOf")) return "has alumniOf";
+            const expectedSchools = page.data.education.map(
+              (entry) => entry.school
+            );
+            const alumni = data.mainEntity?.alumniOf;
+            const listed = (Array.isArray(alumni) ? alumni : alumni ? [alumni] : [])
+              .map((item) => item?.name)
+              .filter(Boolean);
+            if (expectedSchools.join("\n") !== listed.join("\n")) {
+              return `alumniOf is ${listed.join(", ") || "missing"}`;
+            }
           }
         },
       ],
@@ -465,6 +514,40 @@ const checks = [
         },
       ],
       [
+        `${locale}: education school, period, degree, and CET-4 render`,
+        () => {
+          const entry = page.data.education[0];
+          if (!entry) return "no education entry";
+          const problems = [];
+          const htmlFolded = decode(page.html.replace(/<[^>]+>/g, " ")).replace(
+            /\s+/g,
+            " "
+          );
+          const textFolded = page.text.replace(/\s+/g, " ");
+          for (const value of [
+            entry.school,
+            entry.period,
+            entry.degree,
+            ...(entry.highlights ?? []),
+          ]) {
+            const needle = value.replace(/\s+/g, " ");
+            if (!htmlFolded.includes(needle)) problems.push(`html lacks ${value}`);
+            if (!page.markdown.includes(value)) {
+              problems.push(`markdown lacks ${value}`);
+            }
+            if (!textFolded.includes(needle)) problems.push(`text lacks ${value}`);
+          }
+          const section = page.sections.get(page.titles.education) ?? "";
+          const sectionText = decode(section.replace(/<[^>]+>/g, " "));
+          for (const banned of ["至今", "Present", "入学", "Started Sep 2018"]) {
+            if (sectionText.includes(banned) || entry.period.includes(banned)) {
+              problems.push(`education shows ${banned}`);
+            }
+          }
+          if (problems.length > 0) return problems.join("; ");
+        },
+      ],
+      [
         `${locale}: language switch and print control exist and are print-hidden`,
         () => {
           const other = locale === "zh" ? "en" : "zh";
@@ -502,7 +585,7 @@ const checks = [
         `${locale}: the markdown starts with # and the name`,
         () => {
           const first = unescape(page.markdown.split("\n")[0]);
-          if (first !== `# ${FACTS.name}`) return `starts with "${first}"`;
+          if (first !== `# ${FACTS.names[locale]}`) return `starts with "${first}"`;
         },
       ],
       [
@@ -510,8 +593,8 @@ const checks = [
         () => {
           const first = page.styledText.split("\n").find((line) => line.trim());
           if (!first?.startsWith("  \x1b[1m")) return `starts with ${first}`;
-          if (!page.text.trim().replace(/\s+/g, " ").startsWith(FACTS.name)) {
-            return `the first words are not ${FACTS.name}`;
+          if (!page.text.trim().replace(/\s+/g, " ").startsWith(FACTS.names[locale])) {
+            return `the first words are not ${FACTS.names[locale]}`;
           }
         },
       ],
@@ -592,6 +675,26 @@ const checks = [
         problems.push(`CSS lacks ${missing.join(", ")}`);
       }
       if (!css.includes("@media print")) return "no print media rules";
+      if (problems.length > 0) return problems.join("; ");
+    },
+  ],
+  [
+    "Chinese and English display names stay on their own locales",
+    () => {
+      const problems = [];
+      if (pages.zh.data.name !== "郭一博") {
+        problems.push(`zh name is ${pages.zh.data.name}`);
+      }
+      if (pages.en.data.name !== "Berg") {
+        problems.push(`en name is ${pages.en.data.name}`);
+      }
+      if (pages.en.html.includes("郭一博") || pages.en.markdown.includes("郭一博")) {
+        problems.push("en page includes the Chinese display name");
+      }
+      const zhName = decode(pages.zh.html.match(/<h1\b[^>]*>(.*?)<\/h1>/s)?.[1] ?? "");
+      const enName = decode(pages.en.html.match(/<h1\b[^>]*>(.*?)<\/h1>/s)?.[1] ?? "");
+      if (zhName !== "郭一博") problems.push(`zh h1 is ${zhName}`);
+      if (enName !== "Berg") problems.push(`en h1 is ${enName}`);
       if (problems.length > 0) return problems.join("; ");
     },
   ],

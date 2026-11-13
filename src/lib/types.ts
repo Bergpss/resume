@@ -23,7 +23,9 @@ export interface EducationEntry {
   school: string;
   degree: string;
   start: string;
-  end: string | null;
+  end?: string;
+  period: string;
+  highlights?: string[];
 }
 
 export interface Project {
