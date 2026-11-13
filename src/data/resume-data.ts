@@ -132,10 +132,10 @@ export function getSectionTitles(locale: Locale): SectionTitles {
   const ui = UI[locale];
   return {
     summary: ui.aboutSection,
+    projects: ui.projectsSection,
     work: ui.workSection,
     education: ui.educationSection,
     skills: ui.skillsSection,
-    projects: ui.projectsSection,
   };
 }
 
