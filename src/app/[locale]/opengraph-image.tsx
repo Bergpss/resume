@@ -33,12 +33,35 @@ export default async function Image({
 }) {
   const { locale } = await params;
   const data = isLocale(locale) ? getResumeData(locale) : getResumeData("en");
-  const [geistRegular, geistBold] = await Promise.all([
+  const [geistRegular, geistBold, nameFont] = await Promise.all([
     readGeist("Geist-Regular.ttf"),
     readGeist("Geist-Bold.ttf"),
+    locale === "zh"
+      ? readFile(join(process.cwd(), "src/assets/fonts/noto-sans-sc-og.ttf"))
+      : Promise.resolve(undefined),
   ]);
-  // Geist has no CJK glyphs, so the share image stays Latin-only.
+  // Geist has no CJK glyphs. The Chinese share image uses a tiny local
+  // Noto Sans SC subset for the display name only.
   const tagline = locale === "zh" ? undefined : data.about;
+  const nameFontFamily = locale === "zh" ? "Noto Sans SC" : "Geist";
+
+  const fonts: Array<{
+    name: string;
+    data: Buffer;
+    weight: 400 | 700;
+    style: "normal";
+  }> = [
+    { name: "Geist", data: geistRegular, weight: 400, style: "normal" },
+    { name: "Geist", data: geistBold, weight: 700, style: "normal" },
+  ];
+  if (nameFont) {
+    fonts.push({
+      name: "Noto Sans SC",
+      data: nameFont,
+      weight: 400,
+      style: "normal",
+    });
+  }
 
   return new ImageResponse(
     <div
@@ -66,6 +89,7 @@ export default async function Image({
             fontSize: "3rem",
             fontWeight: 700,
             color: colors.ink,
+            fontFamily: nameFontFamily,
           }}
         >
           {data.name}
@@ -92,10 +116,7 @@ export default async function Image({
     </div>,
     {
       ...size,
-      fonts: [
-        { name: "Geist", data: geistRegular, weight: 400, style: "normal" },
-        { name: "Geist", data: geistBold, weight: 700, style: "normal" },
-      ],
+      fonts,
     }
   );
 }

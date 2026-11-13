@@ -59,13 +59,13 @@ const sections: Record<
       highlights: job.highlights ?? [],
       tags: job.badges,
     })),
-  education: ({ education }, locale) =>
+  education: ({ education }) =>
     education.map((school) => ({
       kind: "entry",
       name: school.school,
-      dates: formatDateRange(school.start, school.end, UI[locale].present),
+      dates: school.period,
       role: school.degree,
-      highlights: [],
+      highlights: school.highlights ?? [],
       tags: [],
     })),
   skills: ({ skills }) => [{ kind: "tags", tags: skills }],

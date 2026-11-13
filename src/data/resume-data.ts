@@ -3,7 +3,10 @@ import { UI } from "@/lib/i18n";
 import type { ResumeData } from "@/lib/types";
 
 export const FACTS = {
-  name: "Berg",
+  names: {
+    zh: "郭一博",
+    en: "Berg",
+  },
   siteUrl: "https://resume.guoyibo.top",
   githubUrl: "https://github.com/Bergpss",
   xUrl: "https://x.com/PssBerg",
@@ -12,6 +15,11 @@ export const FACTS = {
     end: "2026-03-31",
     customersServed: 20,
     customersUnderstoodInDepth: 5,
+  },
+  education: {
+    start: "2018-09",
+    end: "2022-06",
+    cet4Score: 530,
   },
 } as const;
 
@@ -26,6 +34,22 @@ export const EXPECTED_OPENCLAW_HIGHLIGHTS = {
   ],
 } as const;
 
+export const EXPECTED_EDUCATION = {
+  zh: {
+    school: "华侨大学",
+    degree: "计算机科学与技术学院 · 本科，计算机科学与技术（人工智能方向）",
+    period: "2018年9月—2022年6月",
+    highlights: ["英语 CET-4 530分"] as const,
+  },
+  en: {
+    school: "Huaqiao University",
+    degree:
+      "College of Computer Science and Technology · Bachelor's, Computer Science and Technology (Artificial Intelligence)",
+    period: "Sep 2018–Jun 2022",
+    highlights: ["CET-4 score: 530"] as const,
+  },
+} as const;
+
 const copy: Record<
   Locale,
   {
@@ -33,6 +57,10 @@ const copy: Record<
     summary: string;
     openclawTitle: string;
     openclawHighlights: readonly [string, string];
+    educationSchool: string;
+    educationDegree: string;
+    educationPeriod: string;
+    educationHighlights: readonly [string];
   }
 > = {
   zh: {
@@ -44,6 +72,11 @@ const copy: Record<
       `累计服务${FACTS.openclaw.customersServed}位客户，指导完成OpenClaw安装与配置。`,
       `深入了解其中${FACTS.openclaw.customersUnderstoodInDepth}位客户的业务，并根据客户业务需求定制Skills。`,
     ],
+    educationSchool: "华侨大学",
+    educationDegree:
+      "计算机科学与技术学院 · 本科，计算机科学与技术（人工智能方向）",
+    educationPeriod: "2018年9月—2022年6月",
+    educationHighlights: [`英语 CET-4 ${FACTS.education.cet4Score}分`],
   },
   en: {
     about: "Helping customers adopt and customize AI tools.",
@@ -54,6 +87,11 @@ const copy: Record<
       `Helped ${FACTS.openclaw.customersServed} customers install and configure OpenClaw.`,
       "Developed an in-depth understanding of five customers’ business workflows and customized Skills around customer needs.",
     ],
+    educationSchool: "Huaqiao University",
+    educationDegree:
+      "College of Computer Science and Technology · Bachelor's, Computer Science and Technology (Artificial Intelligence)",
+    educationPeriod: "Sep 2018–Jun 2022",
+    educationHighlights: [`CET-4 score: ${FACTS.education.cet4Score}`],
   },
 };
 
@@ -80,7 +118,7 @@ export function getSectionTitles(locale: Locale): SectionTitles {
 export function getResumeData(locale: Locale): ResumeData {
   const text = copy[locale];
   return {
-    name: FACTS.name,
+    name: FACTS.names[locale],
     about: text.about,
     summary: text.summary,
     siteUrl: FACTS.siteUrl,
@@ -98,7 +136,16 @@ export function getResumeData(locale: Locale): ResumeData {
         },
       ],
     },
-    education: [],
+    education: [
+      {
+        school: text.educationSchool,
+        degree: text.educationDegree,
+        start: FACTS.education.start,
+        end: FACTS.education.end,
+        period: text.educationPeriod,
+        highlights: [...text.educationHighlights],
+      },
+    ],
     work: [],
     skills: [],
     projects: [
