@@ -75,9 +75,10 @@ const sections: Record<
       name: project.title,
       link: project.link ? web(project.link) : undefined,
       dates:
-        project.start === undefined
+        project.period ??
+        (project.start === undefined
           ? undefined
-          : formatDateRange(project.start, project.end, UI[locale].present),
+          : formatDateRange(project.start, project.end, UI[locale].present)),
       description: project.description,
       highlights: project.highlights ?? [],
       tags: project.techStack,
