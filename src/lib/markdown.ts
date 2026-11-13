@@ -28,13 +28,16 @@ function markdown(part: Block): string {
         part.highlights.map((item) => `- ${line(item)}`).join("\n"),
         part.platforms
           .map((platform) => {
-            const name = platform.link
-              ? anchor(escapeText(platform.name), platform.link.href)
-              : escapeText(platform.name);
-            const note = platform.note ? ` — ${line(platform.note)}` : "";
-            return `- ${name}${note}`;
+            const name = escapeText(platform.name);
+            const followers = platform.followers
+              ? ` ${line(platform.followers)}`
+              : "";
+            const recordedOn = platform.recordedOn
+              ? ` ${line(platform.recordedOn)}`
+              : "";
+            return `${name}${followers}${recordedOn}`;
           })
-          .join("\n"),
+          .join(" · "),
       ]
         .filter(Boolean)
         .join("\n\n");

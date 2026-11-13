@@ -3,7 +3,7 @@
 export const DouyinIcon = (props: React.SVGProps<SVGSVGElement>) => {
   return (
     <svg
-      viewBox="1.6 0.1 27.7 33.9"
+      viewBox="-0.53 1.55 30.97 30.97"
       xmlns="http://www.w3.org/2000/svg"
       {...props}
     >

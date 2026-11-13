@@ -78,10 +78,17 @@ function contentCreation(
   platforms: {
     name: string;
     link?: { href: string; url: string };
-    note?: string;
+    followers?: string;
+    recordedOn?: string;
   }[]
 ): Line[] {
   const marker = run("- ", "dim");
+  const platformLine = platforms.flatMap((platform, i) => [
+    ...(i ? [run(TAG_SEPARATOR, "dim")] : []),
+    run(platform.name),
+    ...(platform.followers ? [run(` ${platform.followers}`)] : []),
+    ...(platform.recordedOn ? [run(` ${platform.recordedOn}`, "dim")] : []),
+  ]);
   return [
     ...highlights.flatMap((item) =>
       wrap([run(item)], MEASURE - 2).map((line, i) => [
@@ -89,16 +96,7 @@ function contentCreation(
         ...line,
       ])
     ),
-    ...platforms.flatMap((platform) => [
-      ...wrap(
-        [
-          run(platform.name, "bold"),
-          ...(platform.note ? [run(`  ${platform.note}`)] : []),
-        ],
-        MEASURE
-      ),
-      ...(platform.link ? wrap([run(platform.link.url, "dim")], WIDTH) : []),
-    ]),
+    ...wrap(platformLine, MEASURE),
   ];
 }
 

@@ -114,7 +114,8 @@ export const EXPECTED_CONTENT_CREATION = {
       "多平台累计播放量已超过 5.6 万。",
     ],
     platforms: ["X", "抖音", "小红书"],
-    xNote: "948 (2026-11-13)",
+    xFollowers: "948 位关注者",
+    xRecordedOn: "2026-11-13",
   },
   en: {
     highlights: [
@@ -123,7 +124,8 @@ export const EXPECTED_CONTENT_CREATION = {
       "Combined views across platforms have passed 56,000.",
     ],
     platforms: ["X", "Douyin", "Xiaohongshu"],
-    xNote: "948 (2026-11-13)",
+    xFollowers: "948 followers",
+    xRecordedOn: "2026-11-13",
   },
 } as const;
 
@@ -144,7 +146,7 @@ const copy: Record<
     hermesHighlights: readonly [string, string, string];
     contentHighlights: readonly [string, string, string];
     contentPlatforms: readonly [string, string, string];
-    contentXNote: string;
+    contentXFollowers: string;
   }
 > = {
   zh: {
@@ -178,7 +180,7 @@ const copy: Record<
       "多平台累计播放量已超过 5.6 万。",
     ],
     contentPlatforms: ["X", "抖音", "小红书"],
-    contentXNote: `${FACTS.contentCreation.xFollowers} (${FACTS.contentCreation.xFollowersAsOf})`,
+    contentXFollowers: `${FACTS.contentCreation.xFollowers} 位关注者`,
   },
   en: {
     about:
@@ -212,7 +214,7 @@ const copy: Record<
       "Combined views across platforms have passed 56,000.",
     ],
     contentPlatforms: ["X", "Douyin", "Xiaohongshu"],
-    contentXNote: `${FACTS.contentCreation.xFollowers} (${FACTS.contentCreation.xFollowersAsOf})`,
+    contentXFollowers: `${FACTS.contentCreation.xFollowers} followers`,
   },
 };
 
@@ -304,7 +306,8 @@ export function getResumeData(locale: Locale): ResumeData {
           {
             name: text.contentPlatforms[0],
             icon: "x",
-            note: text.contentXNote,
+            followers: text.contentXFollowers,
+            recordedOn: FACTS.contentCreation.xFollowersAsOf,
           },
           {
             name: text.contentPlatforms[1],
