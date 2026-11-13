@@ -15,11 +15,31 @@ module.exports = {
     },
     extend: {
       fontFamily: {
-        mono: ["var(--font-geist-mono)", "ui-monospace", "monospace"],
+        mono: [
+          "var(--font-geist-mono)",
+          "ui-monospace",
+          "monospace",
+          "PingFang SC",
+          "Hiragino Sans GB",
+          "Noto Sans CJK SC",
+          "Noto Sans SC",
+          "Source Han Sans SC",
+          "Microsoft YaHei",
+          "WenQuanYi Micro Hei",
+          "sans-serif",
+        ],
         pixel: [
           "var(--font-geist-pixel-square)",
           "var(--font-geist-mono)",
           "monospace",
+          "PingFang SC",
+          "Hiragino Sans GB",
+          "Noto Sans CJK SC",
+          "Noto Sans SC",
+          "Source Han Sans SC",
+          "Microsoft YaHei",
+          "WenQuanYi Micro Hei",
+          "sans-serif",
         ],
       },
       colors: {

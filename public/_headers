@@ -1,0 +1,15 @@
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: SAMEORIGIN
+
+/icon
+  Content-Type: image/png
+
+/apple-icon
+  Content-Type: image/png
+
+/zh/opengraph-image
+  Content-Type: image/png
+
+/en/opengraph-image
+  Content-Type: image/png

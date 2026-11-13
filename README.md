@@ -1,146 +1,96 @@
-![screenshot of cv.jarocki.me, a CV built with this template](.github/screenshot.png)
+# Berg 的简历 / Berg's resume
 
-<h1>minimalist cv <a href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FBartoszJarocki%2Fcv"><img src="https://vercel.com/button" alt="Deploy with Vercel" height="24" align="right"></a></h1>
+中英文双语简历网站，基于 [BartoszJarocki/cv](https://github.com/BartoszJarocki/cv) 的极简模板改写，计划部署到 [resume.guoyibo.top](https://resume.guoyibo.top)。主站 [guoyibo.top](https://guoyibo.top) 不受影响。
 
-[![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue?logo=typescript)](https://www.typescriptlang.org/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-3.4-38B2AC?logo=tailwind-css)](https://tailwindcss.com/)
+保留原项目的 MIT 许可证。
 
-simple web app that renders a minimalist CV with print-friendly layout.
+- 中文：`/zh`
+- English: `/en`
+- 根路径 `/` 会转到 `/zh`（Cloudflare Pages 用 `_redirects`；静态导出后的 `out/index.html` 也会跳转，方便本地预览）
 
-maintained by an ai robot 🤖, with a human pressing merge.
+## 本地预览
 
-## requirements
-
-- node 22.15 or later. `pnpm verify` refuses to run on older versions.
-- pnpm
-
-## getting started
+需要 Node 22.15 或更高版本，以及 pnpm。
 
 ```bash
-git clone https://github.com/BartoszJarocki/cv.git
-cd cv
 pnpm install
 pnpm dev
-# open http://localhost:3000
-# edit src/data/resume-data.ts to customize
+# 打开 http://localhost:3000/zh 或 http://localhost:3000/en
 ```
 
-## scripts
+`pnpm dev` 时请直接打开 `/zh` 或 `/en`。根路径跳转是静态托管行为，开发服务器不一定提供。
 
 ```bash
-pnpm dev          # start development server
-pnpm build        # build for production
-pnpm start        # start production server
-pnpm lint         # run biome linting checks
-pnpm lint:fix     # run biome linting with auto-fix
-pnpm format       # check code formatting with biome
-pnpm format:fix   # format code with biome
-pnpm check        # run both linting and formatting checks
-pnpm check:fix    # run both linting and formatting with auto-fix
-pnpm verify       # check the page, text and markdown that pnpm build prerendered
+pnpm check       # lint + format
+pnpm typecheck
+pnpm build       # 静态导出到 out/
+pnpm verify      # 检查构建结果里的双语内容与链接
 ```
 
-## project structure
-
-```
-scripts/
-└── verify.mjs          # checks run by pnpm verify
-src/
-├── app/                # next.js app router
-│   ├── components/     # page-level components
-│   │   ├── education.tsx
-│   │   ├── header.tsx
-│   │   ├── projects.tsx
-│   │   ├── skills.tsx
-│   │   ├── summary.tsx
-│   │   └── work-experience.tsx
-│   ├── index.md/
-│   │   └── route.ts    # the CV as markdown
-│   ├── index.txt/
-│   │   └── route.ts    # the CV as text, for curl
-│   ├── llms.txt/
-│   │   └── route.ts    # the markdown, with a note on the formats
-│   ├── apple-icon.png  # home screen icon
-│   ├── favicon.ico     # browser tab icon
-│   ├── globals.css     # color palette and base styles
-│   ├── layout.tsx      # root layout with metadata
-│   ├── opengraph-image.tsx
-│   ├── page.tsx        # main resume page
-│   ├── robots.ts
-│   └── sitemap.ts
-├── components/         # shared components
-│   ├── icons/          # social icon components
-│   ├── ui/             # presentational components
-│   ├── command-menu-dialog.tsx
-│   └── command-menu.tsx
-├── data/               # resume data configuration
-│   ├── avatar.jpg      # your photo
-│   └── resume-data.ts
-└── lib/                # utilities and types
-    ├── document.ts     # the CV as blocks for the text and markdown
-    ├── markdown.ts
-    ├── resume.ts
-    ├── structured-data.ts
-    ├── text.ts
-    ├── types.ts
-    └── utils.ts
-```
-
-## customization
-
-all resume content lives in a single file:
-
-```typescript
-// src/data/resume-data.ts
-export const RESUME_DATA = {
-  name: "Your Name",
-  location: "Your City, Country",
-  siteUrl: "https://cv.example.com", // where this CV is deployed
-  about: "One line under your name", // also the meta description and share image text
-  summary: "A paragraph for the About section",
-  // ... more fields
-}
-
-export const SECTION_TITLES = {
-  summary: "About",
-  work: "Work Experience",
-  // ... education, skills, projects
-}
-```
-
-`SECTION_TITLES`, in the same file, holds the section headings. to rename or translate a section, change its heading there. the sections appear in the order of its keys, and the page skips any section whose data is empty, such as `projects: []`.
-
-replace `src/data/avatar.jpg` with your own square photo, a jpeg or a png. to use another file name, put the file directly in `src/data` and change the avatar import in `src/data/resume-data.ts`.
-
-replace `src/app/favicon.ico` and `src/app/apple-icon.png` with your own icons. next.js links them by file name, so no config is needed.
-
-styling uses tailwind css. the palette is six oklch color roles in `src/app/globals.css`, one set for light and one for dark. `tailwind.config.js` maps the tailwind color names onto those roles. `src/app/opengraph-image.tsx` and the `themeColor` list in `src/app/layout.tsx` set their own hex colors, so a palette change in `globals.css` does not reach the share image or the browser theme color.
-
-## text and markdown
-
-the CV also comes as text for terminals and as markdown for ai agents:
+本地查看生产构建：
 
 ```bash
-curl https://cv.jarocki.me                                # 80-column text
-curl -H "Accept: text/markdown" https://cv.jarocki.me     # markdown
-curl https://cv.jarocki.me/index.md                       # markdown, for any client
-curl https://cv.jarocki.me/llms.txt                       # markdown, with a note on the formats
+pnpm build
+npx --yes serve out
+# 打开 http://localhost:3000/ 会跳到中文，或直接打开 /zh、/en
 ```
 
-- curl, httpie and xh get the text at `/`. wget and browsers get the html page.
-- the text uses ansi bold and dim. to page through it, pipe it to `less -R`.
-- ai agents that ask for markdown with `Accept: text/markdown` get it at `/`. the html page also links it with `<link rel="alternate" type="text/markdown">`.
-- `/index.txt` serves the text to any client, such as `wget -qO- https://cv.jarocki.me/index.txt`.
+## 怎么改内容
 
-the text and the markdown come from `src/data/resume-data.ts`, like the page, so they change when you edit it. `pnpm build` renders them as static files, and `pnpm verify` checks them against the data.
+所有简历事实和文案都在 **`src/data/resume-data.ts`**：
 
-the rewrites in `next.config.js` pick the version for `/`. to serve the text to another tool, add its user agent to the `user-agent` pattern there.
+- `FACTS`：姓名、站点地址、社交链接、日期和数字。两种语言共用，改一处即可。
+- `EXPECTED_OPENCLAW_HIGHLIGHTS`：已确认的中英条目，供校验对照。
+- `copy`：各语言的简介、标题和条目。数字请用 `FACTS` 插值，避免中英文不一致。
 
-to try it locally, run `pnpm dev` and `curl http://localhost:3000`.
+界面上的“打印 / 另存为 PDF”、栏目标题等用语在 `src/lib/i18n.ts`。
 
-a plain `curl cv.jarocki.me` gets vercel's redirect from http to https and prints `Redirecting...`. use `https://`, or `curl -L`.
+还没有确认的信息不要编造。空的区块（工作经历、教育、技能、地点、头像、邮箱、电话）会自动隐藏。以后要补充时：
 
-## license
+- 教育：向 `education` 添加条目
+- 正式工作：向 `work` 添加条目（这是雇佣经历，不要把客户项目写在这里）
+- 项目：向 `projects` 添加条目，可带 `start` / `end`、`highlights`、可选链接
+- 头像：把照片放到 `src/data/`，在对应语言的数据里加入 `avatar` 导入
 
-MIT
+改完后运行 `pnpm check`、`pnpm typecheck`、`pnpm build`、`pnpm verify`。
+
+## 打印和 PDF
+
+页面按 **A4** 排版。语言切换、打印按钮和命令菜单在打印时会隐藏。
+
+请使用浏览器的 **打印 → 另存为 PDF**。页面上的“打印 / 另存为 PDF”会打开系统打印对话框，不是文件下载按钮。每种语言单独打开对应网址后再导出，即可得到该语言的 PDF。
+
+## 部署到 Cloudflare Pages（resume.guoyibo.top）
+
+本仓库使用 Next.js 的 `output: "export"`，构建结果是静态文件，可直接交给 Cloudflare Pages，无需服务器或付费工具。
+
+1. 在 Cloudflare Pages 里导入这个 GitHub 仓库。
+2. 构建设置：
+   - Framework preset: 可选 None，或按静态站点配置
+   - Build command: `pnpm install && pnpm build`
+   - Build output directory: `out`
+   - Node.js version: `22`（或 22.15+）
+3. 把自定义域 `resume.guoyibo.top` 加到这个 Pages 项目。DNS 需要你在域名服务商处完成，本仓库不会改 `guoyibo.top` 主站。
+4. `public/_redirects` 会把 `/` 转到 `/zh`。`public/_headers` 提供基础安全头。
+
+本地 `pnpm dev` 仍是 Next 开发服务器，不是 Cloudflare 模拟器。以 `pnpm build` 后的 `out/` 为准。
+
+### 静态托管的限制
+
+- 不会按 `Accept` 或 `User-Agent` 在 `/` 上自动返回 Markdown 或纯文本。请使用：
+  - `https://resume.guoyibo.top/zh/index.md`
+  - `https://resume.guoyibo.top/zh/index.txt`
+  - `https://resume.guoyibo.top/zh/llms.txt`
+  - 英文把 `zh` 换成 `en`
+- 分享图（Open Graph）只使用拉丁字母，因为构建未内置中文字体，以避免远程字体导致构建失败。中文页的分享图会显示 “Berg” 和站点域名。
+
+## 还需要人工确认的事项
+
+- 用真机或浏览器看一遍中文和英文页，确认排版、字体和手机端显示。
+- 用浏览器分别把 `/zh` 和 `/en` 存成 PDF，检查 A4、中文字体和控件是否已隐藏。
+- 部署前再核对 DNS 只指向简历子域。
+- 旧简历里的教育、工作等信息确认后再补进 `src/data/resume-data.ts`。
+
+## License
+
+MIT. This site is adapted from [BartoszJarocki/cv](https://github.com/BartoszJarocki/cv). The original license text is in `LICENSE`.

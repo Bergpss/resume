@@ -1,14 +1,18 @@
 import "server-only";
 import { domainToUnicode } from "node:url";
-import { SECTION_TITLES } from "@/data/resume-data";
+import type { SectionKey } from "@/data/resume-data";
+import { getSectionTitles } from "@/data/resume-data";
+import type { Locale } from "@/lib/i18n";
+import { UI } from "@/lib/i18n";
 import type { ResumeData, SocialIcon, WorkEntry } from "@/lib/types";
 
 export type ContactIcon = SocialIcon | "globe" | "mail" | "phone";
 
-export type SectionKey = keyof typeof SECTION_TITLES;
+export type { SectionKey };
 
-export function getSections(data: ResumeData): SectionKey[] {
-  const keys = Object.keys(SECTION_TITLES) as SectionKey[];
+export function getSections(data: ResumeData, locale: Locale): SectionKey[] {
+  const titles = getSectionTitles(locale);
+  const keys = Object.keys(titles) as SectionKey[];
   return keys.filter((key) => data[key].length > 0);
 }
 
@@ -23,8 +27,8 @@ export function getCurrentRole(work: WorkEntry[]): WorkEntry | undefined {
   return work.find((job) => job.end === null);
 }
 
-export function getPageTitle({ name, work }: ResumeData): string {
-  return `${name} - ${getCurrentRole(work)?.title ?? "Resume"}`;
+export function getPageTitle(data: ResumeData, locale: Locale): string {
+  return `${data.name} - ${getCurrentRole(data.work)?.title ?? UI[locale].pageTitleFallback}`;
 }
 
 const decodeNonAsciiEscapes = (text: string) =>
@@ -43,14 +47,15 @@ export function displayUrl(url: string): string {
   return `${host}${port ? `:${port}` : ""}${decodeNonAsciiEscapes(rest)}`;
 }
 
-export function getContactLinks({
-  personalWebsiteUrl,
-  contact,
-}: ResumeData): ContactLink[] {
+export function getContactLinks(
+  { personalWebsiteUrl, contact }: ResumeData,
+  locale: Locale
+): ContactLink[] {
+  const ui = UI[locale];
   const links: ContactLink[] = [];
   if (personalWebsiteUrl) {
     links.push({
-      label: "Personal Website",
+      label: ui.personalWebsite,
       href: personalWebsiteUrl,
       text: displayUrl(personalWebsiteUrl),
       icon: "globe",
@@ -58,7 +63,7 @@ export function getContactLinks({
   }
   if (contact.email) {
     links.push({
-      label: "Email",
+      label: ui.email,
       href: `mailto:${contact.email}`,
       text: contact.email,
       icon: "mail",
@@ -66,7 +71,7 @@ export function getContactLinks({
   }
   if (contact.tel) {
     links.push({
-      label: "Phone",
+      label: ui.phone,
       href: `tel:${contact.tel}`,
       text: contact.tel,
       icon: "phone",
@@ -81,4 +86,12 @@ export function getContactLinks({
     });
   }
   return links;
+}
+
+export function formatDateRange(
+  start: string,
+  end: string | null | undefined,
+  presentLabel: string
+): string {
+  return `${start} - ${end ?? presentLabel}`;
 }

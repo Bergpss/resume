@@ -1,16 +1,18 @@
 interface DateRangeProps {
   start: string;
-  end: string | null;
+  end: string | null | undefined;
   label: string;
+  presentLabel: string;
 }
 
-export function DateRange({ start, end, label }: DateRangeProps) {
+export function DateRange({ start, end, label, presentLabel }: DateRangeProps) {
+  const endText = end ?? presentLabel;
   return (
     <div
       className="shrink-0 text-[13px] tabular-nums text-muted-foreground print:leading-none"
-      title={`${label}: ${start} to ${end ?? "Present"}`}
+      title={`${label}: ${start} to ${endText}`}
     >
-      {start} - {end ?? "Present"}
+      {start} - {endText}
     </div>
   );
 }

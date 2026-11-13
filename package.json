@@ -1,11 +1,11 @@
 {
-  "name": "web-cv",
+  "name": "resume",
   "version": "0.1.0",
   "private": true,
   "packageManager": "pnpm@11.24.0",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build && node scripts/write-root-index.mjs",
     "start": "next start",
     "lint": "biome lint ./src",
     "lint:fix": "biome lint --write ./src",
@@ -13,11 +13,11 @@
     "format:fix": "biome format --write ./src",
     "check": "biome check ./src",
     "check:fix": "biome check --write ./src",
-    "verify": "node scripts/verify.mjs"
+    "verify": "node scripts/verify.mjs",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.3.1",
-    "@vercel/analytics": "^1.6.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "geist": "^1.7.2",
