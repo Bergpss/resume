@@ -284,9 +284,6 @@ const checks = [
       if (FACTS.education.end !== "2022-06") {
         problems.push(`end is ${FACTS.education.end}`);
       }
-      if (FACTS.education.cet4Score !== 530) {
-        problems.push(`cet4Score is ${FACTS.education.cet4Score}`);
-      }
       for (const locale of LOCALES) {
         const actual = getResumeData(locale).education[0];
         const expected = EXPECTED_EDUCATION[locale];
@@ -303,8 +300,8 @@ const checks = [
         if (actual.period !== expected.period) {
           problems.push(`${locale} period is ${actual.period}`);
         }
-        if ((actual.highlights ?? []).join("\n") !== expected.highlights.join("\n")) {
-          problems.push(`${locale} education highlights drifted`);
+        if ((actual.highlights ?? []).length > 0) {
+          problems.push(`${locale} education still has highlights`);
         }
         if (actual.end !== FACTS.education.end) {
           problems.push(`${locale} education end is ${actual.end}`);
@@ -514,7 +511,7 @@ const checks = [
         },
       ],
       [
-        `${locale}: education school, period, degree, and CET-4 render`,
+        `${locale}: education school, period, and degree render`,
         () => {
           const entry = page.data.education[0];
           if (!entry) return "no education entry";
@@ -539,7 +536,18 @@ const checks = [
           }
           const section = page.sections.get(page.titles.education) ?? "";
           const sectionText = decode(section.replace(/<[^>]+>/g, " "));
-          for (const banned of ["至今", "Present", "入学", "Started Sep 2018"]) {
+          for (const banned of [
+            "至今",
+            "Present",
+            "入学",
+            "Started Sep 2018",
+            "CET-4",
+            "CET4",
+            "CET 4",
+            "四级",
+            "530分",
+            "score: 530",
+          ]) {
             if (sectionText.includes(banned) || entry.period.includes(banned)) {
               problems.push(`education shows ${banned}`);
             }
@@ -696,6 +704,74 @@ const checks = [
       if (zhName !== "郭一博") problems.push(`zh h1 is ${zhName}`);
       if (enName !== "Berg") problems.push(`en h1 is ${enName}`);
       if (problems.length > 0) return problems.join("; ");
+    },
+  ],
+  [
+    "the tagline under the name is the confirmed self-positioning copy",
+    () => {
+      const expected = {
+        zh: "用 AI 帮助用户解决实际问题，让世界更美好",
+        en: "Using AI to solve real problems for people and make the world a better place.",
+      };
+      const stale = [
+        "帮助客户完成 AI 工具的安装、配置与定制。",
+        "Helping customers adopt and customize AI tools.",
+      ];
+      const problems = [];
+      for (const locale of LOCALES) {
+        const page = pages[locale];
+        const about = page.data.about;
+        if (about !== expected[locale]) {
+          problems.push(`${locale} about is ${about}`);
+        }
+        const htmlFolded = decode(page.html.replace(/<[^>]+>/g, " ")).replace(
+          /\s+/g,
+          " "
+        );
+        const textFolded = page.text.replace(/\s+/g, " ");
+        if (!htmlFolded.includes(about)) problems.push(`${locale} html lacks the tagline`);
+        if (!textFolded.includes(about)) problems.push(`${locale} text lacks the tagline`);
+        if (!page.markdown.includes(`> ${about}`)) {
+          problems.push(`${locale} markdown lacks the tagline`);
+        }
+        for (const previous of stale) {
+          if (
+            htmlFolded.includes(previous) ||
+            textFolded.includes(previous) ||
+            page.markdown.includes(previous)
+          ) {
+            problems.push(`${locale} still has the previous tagline`);
+          }
+        }
+      }
+      if (problems.length > 0) return problems.join("; ");
+    },
+  ],
+  [
+    "CET-4 and the 530 score are removed from the published resume",
+    () => {
+      const needles = [
+        "CET-4",
+        "CET4",
+        "CET 4",
+        "四级",
+        "530分",
+        "score: 530",
+        "cet4Score",
+      ];
+      const hits = [];
+      for (const file of builtTextFiles) {
+        const text = readOut(file);
+        for (const needle of needles) {
+          if (text.includes(needle)) hits.push(`${file}: ${needle}`);
+        }
+      }
+      for (const [file, source] of sources) {
+        for (const needle of needles) {
+          if (source.includes(needle)) hits.push(`src/${file}: ${needle}`);
+        }
+      }
+      if (hits.length > 0) return hits.join("; ");
     },
   ],
   [

@@ -19,7 +19,6 @@ export const FACTS = {
   education: {
     start: "2018-09",
     end: "2022-06",
-    cet4Score: 530,
   },
 } as const;
 
@@ -39,14 +38,12 @@ export const EXPECTED_EDUCATION = {
     school: "华侨大学",
     degree: "计算机科学与技术学院 · 本科，计算机科学与技术（人工智能方向）",
     period: "2018年9月—2022年6月",
-    highlights: ["英语 CET-4 530分"] as const,
   },
   en: {
     school: "Huaqiao University",
     degree:
       "College of Computer Science and Technology · Bachelor's, Computer Science and Technology (Artificial Intelligence)",
     period: "Sep 2018–Jun 2022",
-    highlights: ["CET-4 score: 530"] as const,
   },
 } as const;
 
@@ -60,11 +57,10 @@ const copy: Record<
     educationSchool: string;
     educationDegree: string;
     educationPeriod: string;
-    educationHighlights: readonly [string];
   }
 > = {
   zh: {
-    about: "帮助客户完成 AI 工具的安装、配置与定制。",
+    about: "用 AI 帮助用户解决实际问题，让世界更美好",
     summary:
       "我帮助客户安装、配置 OpenClaw，并在深入了解其业务后，按需求定制 Skills。",
     openclawTitle: "OpenClaw 客户服务与定制",
@@ -76,10 +72,10 @@ const copy: Record<
     educationDegree:
       "计算机科学与技术学院 · 本科，计算机科学与技术（人工智能方向）",
     educationPeriod: "2018年9月—2022年6月",
-    educationHighlights: [`英语 CET-4 ${FACTS.education.cet4Score}分`],
   },
   en: {
-    about: "Helping customers adopt and customize AI tools.",
+    about:
+      "Using AI to solve real problems for people and make the world a better place.",
     summary:
       "I help customers install and configure OpenClaw, and after developing an in-depth understanding of their business, I customize Skills around their needs.",
     openclawTitle: "OpenClaw Setup & Customization",
@@ -91,7 +87,6 @@ const copy: Record<
     educationDegree:
       "College of Computer Science and Technology · Bachelor's, Computer Science and Technology (Artificial Intelligence)",
     educationPeriod: "Sep 2018–Jun 2022",
-    educationHighlights: [`CET-4 score: ${FACTS.education.cet4Score}`],
   },
 };
 
@@ -143,7 +138,6 @@ export function getResumeData(locale: Locale): ResumeData {
         start: FACTS.education.start,
         end: FACTS.education.end,
         period: text.educationPeriod,
-        highlights: [...text.educationHighlights],
       },
     ],
     work: [],
