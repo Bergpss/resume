@@ -8,7 +8,8 @@ export interface ContentPlatform {
   name: string;
   icon: ContentPlatformIcon;
   url?: string;
-  note?: string;
+  followers?: string;
+  recordedOn?: string;
 }
 
 export interface ContentCreationEntry {

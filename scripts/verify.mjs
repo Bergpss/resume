@@ -473,15 +473,25 @@ const checks = [
         if (icons.join("\n") !== ["x", "douyin", "xiaohongshu"].join("\n")) {
           problems.push(`${locale} platform icons are ${icons.join(", ")}`);
         }
-        const snapshot = `${FACTS.contentCreation.xFollowers} (${FACTS.contentCreation.xFollowersAsOf})`;
-        if (expected.xNote !== snapshot) {
-          problems.push(`${locale} expected X note drifted from the snapshot`);
+        const followers = expected.xFollowers;
+        const recordedOn = FACTS.contentCreation.xFollowersAsOf;
+        if (expected.xRecordedOn !== recordedOn) {
+          problems.push(`${locale} expected date drifted from the snapshot`);
         }
-        if (actual.platforms[0]?.note !== snapshot) {
-          problems.push(`${locale} X note is ${actual.platforms[0]?.note}`);
+        if (actual.platforms[0]?.followers !== followers) {
+          problems.push(`${locale} X followers are ${actual.platforms[0]?.followers}`);
         }
-        if (actual.platforms.some((platform) => platform.url)) {
-          problems.push(`${locale} content platforms still have profile URLs`);
+        if (actual.platforms[0]?.recordedOn !== recordedOn) {
+          problems.push(`${locale} X date is ${actual.platforms[0]?.recordedOn}`);
+        }
+        if (!followers.includes(String(FACTS.contentCreation.xFollowers))) {
+          problems.push(`${locale} follower label is missing the recorded count`);
+        }
+        if (actual.platforms.slice(1).some((platform) => platform.followers || platform.recordedOn)) {
+          problems.push(`${locale} non-X platforms have follower copy`);
+        }
+        if (actual.platforms.some((platform) => platform.url || platform.note)) {
+          problems.push(`${locale} content platforms still have profile URLs or the old note field`);
         }
       }
       if (problems.length > 0) return problems.join("; ");
@@ -968,7 +978,8 @@ const checks = [
           for (const value of [
             ...entry.highlights,
             ...entry.platforms.map((platform) => platform.name),
-            entry.platforms[0]?.note,
+            entry.platforms[0]?.followers,
+            entry.platforms[0]?.recordedOn,
           ]) {
             const needle = value.replace(/\s+/g, " ");
             if (!htmlFolded.includes(needle)) problems.push(`html lacks ${value}`);
@@ -1006,7 +1017,63 @@ const checks = [
           if (!section.includes("<title>Xiaohongshu</title>")) {
             problems.push("Xiaohongshu logo is missing an accessible title");
           }
-          const names = [...section.matchAll(/<span class="font-medium">(.*?)<\/span>/g)].map(
+          const platformList = section.match(
+            /<ul\b[^>]*aria-label="[^"]*"[^>]*>([\s\S]*?)<\/ul>/
+          );
+          if (!platformList) {
+            problems.push("platform list is missing");
+          } else {
+            const listTag = platformList[0].slice(0, platformList[0].indexOf(">") + 1);
+            if (!/\bflex\b/.test(listTag) || !/\bflex-wrap\b/.test(listTag)) {
+              problems.push("platform list is not a wrapping flex row");
+            }
+            if (!/\bitems-baseline\b/.test(listTag)) {
+              problems.push("platform list does not share a text baseline");
+            }
+            if (!/\bgap-x-4\b/.test(listTag)) {
+              problems.push("platform list does not use a fixed horizontal gap");
+            }
+            if (/justify-(?:between|around|evenly|stretch)/.test(listTag)) {
+              problems.push("platform list stretches items across the row");
+            }
+            const items = [
+              ...platformList[1].matchAll(/<li\b([^>]*)>([\s\S]*?)<\/li>/g),
+            ];
+            const order = items.map(([, attrs]) =>
+              attrs.match(/data-platform="([^"]+)"/)?.[1]
+            );
+            if (order.join("\n") !== ["x", "douyin", "xiaohongshu"].join("\n")) {
+              problems.push(`platform order is ${order.join(", ") || "missing"}`);
+            }
+            if (items.some(([, attrs]) => /\b(?:w-full|flex-1)\b/.test(attrs))) {
+              problems.push("a platform item stretches to fill the row");
+            }
+            if (items.some(([, attrs]) => !/\bshrink-0\b/.test(attrs))) {
+              problems.push("a platform item can shrink instead of wrapping");
+            }
+            if (/<p\b/.test(platformList[1])) {
+              problems.push("follower copy is back on its own block row");
+            }
+            const xItem = items.find(([, attrs]) => /data-platform="x"/.test(attrs))?.[2] ?? "";
+            const xText = decode(xItem.replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ");
+            if (!xItem.includes(entry.platforms[0]?.followers)) {
+              problems.push("X item is missing the follower label");
+            }
+            if (!xItem.toLowerCase().includes(`datetime="${FACTS.contentCreation.xFollowersAsOf}"`)) {
+              problems.push("X date is not marked up as a time value");
+            }
+            if (!xText.includes(FACTS.contentCreation.xFollowersAsOf)) {
+              problems.push("X item is missing the recorded date");
+            }
+            if (items.slice(1).some(([, , body]) => body.includes("位关注者") || body.includes("followers") || body.includes("2026-11-13"))) {
+              problems.push("follower copy leaked onto Douyin or Xiaohongshu");
+            }
+            const iconSizes = [...platformList[1].matchAll(/class="([^"]*\bsize-3\.5\b[^"]*)"/g)];
+            if (iconSizes.length !== 3) {
+              problems.push(`platform logos do not share one size box (${iconSizes.length})`);
+            }
+          }
+          const names = [...section.matchAll(/data-platform="[^"]+"[^>]*>[\s\S]*?<span>(.*?)<\/span>/g)].map(
             ([, name]) => decode(name)
           );
           if (names.join("\n") !== expected.platforms.join("\n")) {
@@ -1039,7 +1106,7 @@ const checks = [
             "接近1000",
             "approaching 1,000",
             "approaching 1000",
-            "关注者",
+            "948 (2026-11-13)",
             "记录",
             "followers as of",
             "as of Nov",

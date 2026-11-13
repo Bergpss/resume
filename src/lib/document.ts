@@ -36,7 +36,8 @@ export type Inline = string | { code: string };
 export interface PlatformLine {
   name: string;
   link?: Link;
-  note?: string;
+  followers?: string;
+  recordedOn?: string;
 }
 
 export type Block =
@@ -87,7 +88,8 @@ const sections: Record<
       platforms: entry.platforms.map((platform) => ({
         name: platform.name,
         link: platform.url ? web(platform.url) : undefined,
-        note: platform.note,
+        followers: platform.followers,
+        recordedOn: platform.recordedOn,
       })),
     })),
   projects: ({ projects }, locale) =>

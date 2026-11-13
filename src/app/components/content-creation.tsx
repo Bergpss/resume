@@ -14,24 +14,45 @@ const PLATFORM_ICONS: Record<
   xiaohongshu: XiaohongshuIcon,
 };
 
+interface PlatformIconProps {
+  icon: ContentPlatformIcon;
+}
+
+function PlatformIcon({ icon }: PlatformIconProps) {
+  const Icon = PLATFORM_ICONS[icon];
+
+  return (
+    <span
+      className="inline-flex size-3.5 shrink-0 items-center justify-center self-center"
+      aria-hidden="true"
+    >
+      <Icon className="size-full" />
+    </span>
+  );
+}
+
 interface PlatformItemProps {
   platform: ContentPlatform;
 }
 
 function PlatformItem({ platform }: PlatformItemProps) {
-  const { name, icon, note } = platform;
-  const Icon = PLATFORM_ICONS[icon];
+  const { name, icon, followers, recordedOn } = platform;
 
   return (
-    <li className="min-w-0">
-      <span className="inline-flex items-center gap-1.5">
-        <Icon className="size-4 shrink-0" aria-hidden="true" />
-        <span className="font-medium">{name}</span>
-      </span>
-      {note ? (
-        <p className="mt-0.5 text-pretty text-xs text-muted-foreground print:text-[10px] print:leading-tight">
-          {note}
-        </p>
+    <li
+      data-platform={icon}
+      className="inline-flex shrink-0 items-baseline gap-x-1.5"
+    >
+      <PlatformIcon icon={icon} />
+      <span>{name}</span>
+      {followers ? <span>{followers}</span> : null}
+      {recordedOn ? (
+        <time
+          className="text-muted-foreground tabular-nums"
+          dateTime={recordedOn}
+        >
+          {recordedOn}
+        </time>
       ) : null}
     </li>
   );
@@ -59,7 +80,7 @@ export function ContentCreation({
           ))}
         </ul>
         <ul
-          className="mt-3 flex flex-wrap items-start gap-x-6 gap-y-3 print:mt-1.5 print:gap-x-5 print:gap-y-1.5"
+          className="mt-2 flex min-w-0 max-w-full flex-wrap items-baseline gap-x-4 gap-y-1.5 text-xs text-body print:mt-1 print:gap-x-4 print:gap-y-1 print:text-[10px] print:leading-tight"
           aria-label={platformsLabel}
         >
           {platforms.map((platform) => (
