@@ -707,17 +707,26 @@ const checks = [
             }
           }
           const feedback = {
-            zh: ["客户反馈", "客户自述", "未独立测量", "AI 辅助工作流"],
-            en: [
-              "Client feedback",
-              "client's own account",
-              "not independently measured",
-              "AI-assisted workflow",
-            ],
+            zh: ["客户反馈", "其图纸算量工作流由数天缩短至数分钟"],
+            en: ["Client feedback", "their drawing quantity takeoff workflow"],
           }[locale];
           for (const needle of feedback) {
             if (!firstText.includes(needle) && !htmlFolded.includes(needle)) {
               problems.push(`feedback lacks ${needle}`);
+            }
+          }
+          const removed = [
+            "客户自述整体 AI 辅助工作流，未独立测量",
+            "the client's own account of the overall AI-assisted workflow; not independently measured",
+          ];
+          for (const needle of removed) {
+            if (
+              firstText.includes(needle) ||
+              htmlFolded.includes(needle) ||
+              page.markdown.includes(needle) ||
+              textFolded.includes(needle)
+            ) {
+              problems.push(`feedback still has ${needle}`);
             }
           }
           if (problems.length > 0) return problems.join("; ");
