@@ -139,7 +139,9 @@ export function Header({ data, locale }: HeaderProps) {
         <Image
           className="size-28 shrink-0 rounded-xl bg-muted object-cover ring-1 ring-muted"
           src={data.avatar}
-          alt={`${data.name}'s profile picture`}
+          alt={
+            locale === "zh" ? `${data.name}的头像` : `Portrait of ${data.name}`
+          }
           width={112}
           height={112}
           preload={true}
