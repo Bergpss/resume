@@ -48,12 +48,12 @@ const sections: Record<
   (data: ResumeData, locale: Locale) => Block[]
 > = {
   summary: ({ summary }) => [{ kind: "paragraph", inlines: [summary] }],
-  work: ({ work }, locale) =>
+  work: ({ work }) =>
     work.map((job) => ({
       kind: "entry",
       name: job.company,
       link: job.link ? web(job.link) : undefined,
-      dates: formatDateRange(job.start, job.end, UI[locale].present),
+      dates: job.period,
       role: job.title,
       description: job.description,
       highlights: job.highlights ?? [],

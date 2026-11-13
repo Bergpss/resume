@@ -36,6 +36,7 @@ module.registerHooks({ resolve: resolveAlias });
 const {
   EXPECTED_EDUCATION,
   EXPECTED_OPENCLAW_HIGHLIGHTS,
+  EXPECTED_WORK,
   FACTS,
   getResumeData,
   getSectionTitles,
@@ -311,6 +312,63 @@ const checks = [
     },
   ],
   [
+    "work facts stay in sync with the confirmed copy",
+    () => {
+      const problems = [];
+      if (FACTS.work.company !== "北京南北天地科技股份有限公司") {
+        problems.push(`company is ${FACTS.work.company}`);
+      }
+      if (FACTS.work.start !== "2022-09") {
+        problems.push(`start is ${FACTS.work.start}`);
+      }
+      if (FACTS.work.end !== "2025-05") {
+        problems.push(`end is ${FACTS.work.end}`);
+      }
+      for (const locale of LOCALES) {
+        const actual = getResumeData(locale).work[0];
+        const expected = EXPECTED_WORK[locale];
+        if (!actual) {
+          problems.push(`${locale} is missing work`);
+          continue;
+        }
+        if (getResumeData(locale).work.length !== 1) {
+          problems.push(`${locale} has ${getResumeData(locale).work.length} work entries`);
+        }
+        if (actual.company !== expected.company) {
+          problems.push(`${locale} company is ${actual.company}`);
+        }
+        if (actual.company !== FACTS.work.company) {
+          problems.push(`${locale} invented a company name: ${actual.company}`);
+        }
+        if (actual.title !== expected.title) {
+          problems.push(`${locale} title is ${actual.title}`);
+        }
+        if (actual.period !== expected.period) {
+          problems.push(`${locale} period is ${actual.period}`);
+        }
+        if ((actual.highlights ?? []).join("\n") !== expected.highlights.join("\n")) {
+          problems.push(`${locale} work highlights drifted from the confirmed copy`);
+        }
+        if (actual.description) {
+          problems.push(`${locale} work has a description beyond the confirmed bullet`);
+        }
+        if (actual.badges.length > 0) {
+          problems.push(`${locale} work invents badges`);
+        }
+        if (actual.link) {
+          problems.push(`${locale} work invents a company link`);
+        }
+        if (actual.start !== FACTS.work.start) {
+          problems.push(`${locale} work start is ${actual.start}`);
+        }
+        if (actual.end !== FACTS.work.end) {
+          problems.push(`${locale} work end is ${actual.end}`);
+        }
+      }
+      if (problems.length > 0) return problems.join("; ");
+    },
+  ],
+  [
     "built files exist for both locales and the root redirect",
     () => {
       const missing = [
@@ -550,6 +608,59 @@ const checks = [
           ]) {
             if (sectionText.includes(banned) || entry.period.includes(banned)) {
               problems.push(`education shows ${banned}`);
+            }
+          }
+          if (problems.length > 0) return problems.join("; ");
+        },
+      ],
+      [
+        `${locale}: work company, period, title, and highlight render`,
+        () => {
+          const entry = page.data.work[0];
+          if (!entry) return "no work entry";
+          const problems = [];
+          const htmlFolded = decode(page.html.replace(/<[^>]+>/g, " ")).replace(
+            /\s+/g,
+            " "
+          );
+          const textFolded = page.text.replace(/\s+/g, " ");
+          for (const value of [
+            entry.company,
+            entry.period,
+            entry.title,
+            ...(entry.highlights ?? []),
+          ]) {
+            const needle = value.replace(/\s+/g, " ");
+            if (!htmlFolded.includes(needle)) problems.push(`html lacks ${value}`);
+            if (!page.markdown.includes(value)) {
+              problems.push(`markdown lacks ${value}`);
+            }
+            if (!textFolded.includes(needle)) problems.push(`text lacks ${value}`);
+          }
+          const section = page.sections.get(page.titles.work) ?? "";
+          const sectionText = decode(section.replace(/<[^>]+>/g, " "));
+          const bullets = [...section.matchAll(/<li\b[^>]*>(.*?)<\/li>/gs)].map(
+            ([, item]) => decode(item.replace(/<[^>]+>/g, "")).trim()
+          );
+          if (bullets.join("\n") !== (entry.highlights ?? []).join("\n")) {
+            problems.push(`work bullets are ${bullets.join(" | ") || "missing"}`);
+          }
+          for (const banned of [
+            "至今",
+            "Present",
+            "2022-09 - 2025-05",
+            "Co., Ltd",
+            "Co.,Ltd",
+            "Limited",
+            "Nanbei",
+            "Tiandi Technology",
+            "CET-4",
+            "CET4",
+            "四级",
+            "530分",
+          ]) {
+            if (sectionText.includes(banned) || entry.period.includes(banned)) {
+              problems.push(`work shows ${banned}`);
             }
           }
           if (problems.length > 0) return problems.join("; ");
