@@ -596,7 +596,7 @@ const checks = [
         },
       ],
       [
-        `${locale}: section order is about, projects, work, then education`,
+        `${locale}: section order is projects, work, then education`,
         () => {
           const expectedKeys = [
             "summary",
@@ -615,6 +615,52 @@ const checks = [
           if (page.headings.join("\n") !== expectedHeadings.join("\n")) {
             return `page has ${page.headings.join(", ")}`;
           }
+          const published = expectedKeys.filter((key) => hasData(page.data, key));
+          if (published.join("\n") !== ["projects", "work", "education"].join("\n")) {
+            return `published sections are ${published.join(", ")}`;
+          }
+        },
+      ],
+      [
+        `${locale}: the about body section is omitted and the tagline stays`,
+        () => {
+          const problems = [];
+          if (page.data.summary) {
+            problems.push("summary is still populated");
+          }
+          if (page.data.about !== {
+            zh: "用 AI 帮助用户解决实际问题，让世界更美好",
+            en: "Using AI to solve real problems for people and make the world a better place.",
+          }[locale]) {
+            problems.push(`tagline is ${page.data.about}`);
+          }
+          const stale = [
+            "我帮助客户安装、配置 OpenClaw，并在深入了解其业务后，按需求定制 Skills。",
+            "I help customers install and configure OpenClaw, and after developing an in-depth understanding of their business, I customize Skills around their needs.",
+          ];
+          const htmlFolded = decode(page.html.replace(/<[^>]+>/g, " ")).replace(
+            /\s+/g,
+            " "
+          );
+          const textFolded = page.text.replace(/\s+/g, " ");
+          for (const needle of stale) {
+            if (
+              htmlFolded.includes(needle) ||
+              textFolded.includes(needle) ||
+              page.markdown.includes(needle)
+            ) {
+              problems.push("stale about body is still published");
+            }
+          }
+          for (const heading of [page.titles.summary, "简介", "About"]) {
+            if (page.headings.includes(heading)) {
+              problems.push(`page still has heading ${heading}`);
+            }
+            if (page.markdown.match(new RegExp(`^## ${heading}$`, "m"))) {
+              problems.push(`markdown still has heading ${heading}`);
+            }
+          }
+          if (problems.length > 0) return problems.join("; ");
         },
       ],
       [

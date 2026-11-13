@@ -95,7 +95,6 @@ const copy: Record<
   Locale,
   {
     about: string;
-    summary: string;
     openclawTitle: string;
     openclawHighlights: readonly [string, string];
     educationSchool: string;
@@ -111,8 +110,6 @@ const copy: Record<
 > = {
   zh: {
     about: "用 AI 帮助用户解决实际问题，让世界更美好",
-    summary:
-      "我帮助客户安装、配置 OpenClaw，并在深入了解其业务后，按需求定制 Skills。",
     openclawTitle: "OpenClaw 客户服务与定制",
     openclawHighlights: [
       `累计服务${FACTS.openclaw.customersServed}位客户，指导完成OpenClaw安装与配置。`,
@@ -136,8 +133,6 @@ const copy: Record<
   en: {
     about:
       "Using AI to solve real problems for people and make the world a better place.",
-    summary:
-      "I help customers install and configure OpenClaw, and after developing an in-depth understanding of their business, I customize Skills around their needs.",
     openclawTitle: "OpenClaw Setup & Customization",
     openclawHighlights: [
       `Helped ${FACTS.openclaw.customersServed} customers install and configure OpenClaw.`,
@@ -185,7 +180,7 @@ export function getResumeData(locale: Locale): ResumeData {
   return {
     name: FACTS.names[locale],
     about: text.about,
-    summary: text.summary,
+    summary: "",
     siteUrl: FACTS.siteUrl,
     contact: {
       social: [
