@@ -22,6 +22,7 @@ export const FACTS = {
   },
   work: {
     company: "北京南北天地科技股份有限公司",
+    companyEn: "Beijing Snsoft Technology Co.,Ltd",
     start: "2022-09",
     end: "2025-05",
   },
@@ -84,7 +85,7 @@ export const EXPECTED_WORK = {
     highlights: ["参与 ERP 产品研发。"],
   },
   en: {
-    company: "北京南北天地科技股份有限公司",
+    company: "Beijing Snsoft Technology Co.,Ltd",
     title: "Java Developer",
     period: "Sep 2022–May 2025",
     highlights: ["Worked on ERP product development."],
@@ -207,7 +208,7 @@ export function getResumeData(locale: Locale): ResumeData {
     ],
     work: [
       {
-        company: FACTS.work.company,
+        company: locale === "en" ? FACTS.work.companyEn : FACTS.work.company,
         badges: [],
         title: text.workTitle,
         start: FACTS.work.start,
