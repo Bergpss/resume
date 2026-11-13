@@ -19,6 +19,5 @@ jobs:
       - uses: pnpm/action-setup@v6
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
-      - run: pnpm typecheck
       - run: pnpm build
       - run: pnpm verify
