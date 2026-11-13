@@ -1313,6 +1313,48 @@ const checks = [
     },
   ],
   [
+    "both locales show the same header portrait",
+    () => {
+      const problems = [];
+      const srcs = [];
+      for (const locale of LOCALES) {
+        const page = pages[locale];
+        const header = page.html.match(/<header\b.*?<\/header>/s)?.[0] ?? "";
+        const imgs = [...header.matchAll(/<img\b[^>]*>/g)].map(([tag]) => tag);
+        if (imgs.length !== 1) {
+          problems.push(`${locale} header has ${imgs.length} images`);
+          continue;
+        }
+        const src = imgs[0].match(/\bsrc="([^"]+)"/)?.[1] ?? "";
+        const alt = decode(imgs[0].match(/\balt="([^"]*)"/)?.[1] ?? "");
+        const expectedAlt =
+          locale === "zh" ? "郭一博的头像" : "Portrait of Berg";
+        if (alt !== expectedAlt) problems.push(`${locale} alt is ${alt}`);
+        if (!src.includes("/_next/static/media/") || !/\.jpg(?:\?|$)/.test(src)) {
+          problems.push(`${locale} src is ${src}`);
+        }
+        srcs.push(src);
+        const json = JSON.parse(page.jsonLdScripts[0] ?? "{}");
+        const image = json.mainEntity?.image;
+        const expectedImage = new URL(src, `${site}/`).href;
+        if (image !== expectedImage) {
+          problems.push(`${locale} JSON-LD image is ${image}`);
+        }
+        if (!header.includes(page.data.name) || !header.includes(page.data.about)) {
+          problems.push(`${locale} header lost the name or tagline`);
+        }
+      }
+      if (srcs.length === 2 && srcs[0] !== srcs[1]) {
+        problems.push(`zh and en use different files: ${srcs.join(", ")}`);
+      }
+      const file = (srcs[0] ?? "").split("?")[0].replace(/^\//, "");
+      if (file && !existsSync(join(outDir, file))) {
+        problems.push(`built file missing ${file}`);
+      }
+      if (problems.length > 0) return problems.join("; ");
+    },
+  ],
+  [
     "CET-4 and the 530 score are removed from the published resume",
     () => {
       const needles = [

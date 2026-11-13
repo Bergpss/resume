@@ -1,6 +1,7 @@
 import type { Locale } from "@/lib/i18n";
 import { UI } from "@/lib/i18n";
 import type { ResumeData } from "@/lib/types";
+import avatar from "./avatar.jpg";
 
 export const FACTS = {
   names: {
@@ -246,6 +247,7 @@ export function getResumeData(locale: Locale): ResumeData {
     name: FACTS.names[locale],
     about: text.about,
     summary: "",
+    avatar,
     siteUrl: FACTS.siteUrl,
     contact: {
       social: [
