@@ -29,6 +29,12 @@ export const FACTS = {
   hermesCad: {
     start: "2026-09",
   },
+  contentCreation: {
+    // public_metrics.followers_count for @PssBerg via the official X public
+    // user lookup, recorded in America/Los_Angeles. This is a snapshot, not live.
+    xFollowers: 948,
+    xFollowersAsOf: "2026-11-13",
+  },
 } as const;
 
 export const EXPECTED_OPENCLAW_HIGHLIGHTS = {
@@ -100,6 +106,27 @@ export const EXPECTED_WORK = {
   },
 } as const;
 
+export const EXPECTED_CONTENT_CREATION = {
+  zh: {
+    highlights: [
+      "主要制作 AI 相关视频。",
+      "持续用通俗易懂的语言分享 AI 前沿讯息和基础知识。",
+      "多平台累计播放量已超过 5.6 万。",
+    ],
+    platforms: ["X", "抖音", "小红书"],
+    xNote: "关注者 948（2026年11月13日记录），接近 1,000。",
+  },
+  en: {
+    highlights: [
+      "I mainly make AI-related videos.",
+      "I keep sharing AI news and the basics in plain, accessible language.",
+      "Combined views across platforms have passed 56,000.",
+    ],
+    platforms: ["X", "Douyin", "Xiaohongshu"],
+    xNote: "948 followers as of Nov 13, 2026, approaching 1,000.",
+  },
+} as const;
+
 const copy: Record<
   Locale,
   {
@@ -115,6 +142,9 @@ const copy: Record<
     hermesTitle: string;
     hermesPeriod: string;
     hermesHighlights: readonly [string, string, string];
+    contentHighlights: readonly [string, string, string];
+    contentPlatforms: readonly [string, string, string];
+    contentXNote: string;
   }
 > = {
   zh: {
@@ -142,6 +172,13 @@ const copy: Record<
       "按图框、视口与分图标题位置归组说明、材料引注和尺寸，输出 Markdown。主路径由看图软件先转为 T3 通用图纸，再用 Python ezdxf 提取，DWG 经 LibreDWG dwg2dxf 转换；无法转 T3 时，用 LibreDWG dwgread JSON 启发式解码自定义实体，并提示可能遗漏或错误，关键数字需复核。",
       "交付 Skill 包、指南与 Hermes 使用提示词。客户反馈：其图纸算量工作流由数天缩短至数分钟。",
     ],
+    contentHighlights: [
+      "主要制作 AI 相关视频。",
+      "持续用通俗易懂的语言分享 AI 前沿讯息和基础知识。",
+      "多平台累计播放量已超过 5.6 万。",
+    ],
+    contentPlatforms: ["X", "抖音", "小红书"],
+    contentXNote: "关注者 948（2026年11月13日记录），接近 1,000。",
   },
   en: {
     about:
@@ -169,6 +206,13 @@ const copy: Record<
       "Groups notes, material callouts, and dimensions by title block, viewport, and sheet-title position, and writes Markdown. The main path converts drawings to the generic T3 format in a viewer, then extracts them with Python ezdxf; DWG files go through LibreDWG dwg2dxf. When T3 conversion is not available, a fallback heuristically decodes custom entities from LibreDWG dwgread JSON and flags possible omissions or errors so key figures can be checked.",
       "Delivered the Skill package, a guide, and Hermes prompts. Client feedback: their drawing quantity takeoff workflow went from several days to a few minutes.",
     ],
+    contentHighlights: [
+      "I mainly make AI-related videos.",
+      "I keep sharing AI news and the basics in plain, accessible language.",
+      "Combined views across platforms have passed 56,000.",
+    ],
+    contentPlatforms: ["X", "Douyin", "Xiaohongshu"],
+    contentXNote: "948 followers as of Nov 13, 2026, approaching 1,000.",
   },
 };
 
@@ -177,7 +221,8 @@ export type SectionKey =
   | "work"
   | "education"
   | "skills"
-  | "projects";
+  | "projects"
+  | "contentCreation";
 
 export type SectionTitles = Record<SectionKey, string>;
 
@@ -186,6 +231,7 @@ export function getSectionTitles(locale: Locale): SectionTitles {
   return {
     summary: ui.aboutSection,
     projects: ui.projectsSection,
+    contentCreation: ui.contentCreationSection,
     work: ui.workSection,
     education: ui.educationSection,
     skills: ui.skillsSection,
@@ -249,6 +295,27 @@ export function getResumeData(locale: Locale): ResumeData {
         end: FACTS.openclaw.end,
         highlights: [...text.openclawHighlights],
         techStack: [],
+      },
+    ],
+    contentCreation: [
+      {
+        highlights: [...text.contentHighlights],
+        platforms: [
+          {
+            name: text.contentPlatforms[0],
+            icon: "x",
+            url: FACTS.xUrl,
+            note: text.contentXNote,
+          },
+          {
+            name: text.contentPlatforms[1],
+            icon: "douyin",
+          },
+          {
+            name: text.contentPlatforms[2],
+            icon: "xiaohongshu",
+          },
+        ],
       },
     ],
   };

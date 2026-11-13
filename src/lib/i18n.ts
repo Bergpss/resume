@@ -32,6 +32,8 @@ export interface UiCopy {
   educationSection: string;
   skillsSection: string;
   projectsSection: string;
+  contentCreationSection: string;
+  platformsLabel: string;
   pageTitleFallback: string;
   print: string;
   language: string;
@@ -63,6 +65,8 @@ export const UI: Record<Locale, UiCopy> = {
     educationSection: "教育经历",
     skillsSection: "技能",
     projectsSection: "项目",
+    contentCreationSection: "自媒体经历",
+    platformsLabel: "平台",
     pageTitleFallback: "简历",
     print: "打印 / 另存为 PDF",
     language: "语言",
@@ -92,6 +96,8 @@ export const UI: Record<Locale, UiCopy> = {
     educationSection: "Education",
     skillsSection: "Skills",
     projectsSection: "Projects",
+    contentCreationSection: "Content Creation",
+    platformsLabel: "Platforms",
     pageTitleFallback: "Resume",
     print: "Print / Save as PDF",
     language: "Language",

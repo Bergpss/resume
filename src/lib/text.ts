@@ -43,6 +43,8 @@ function layout(part: Block): Line[] {
       return entry(part);
     case "tags":
       return wrap(tags(part.tags, "plain"), MEASURE);
+    case "contentCreation":
+      return contentCreation(part.highlights, part.platforms);
   }
 }
 
@@ -68,6 +70,35 @@ function entry({
     ),
     ...(badges.length ? wrap(tags(badges, "dim"), MEASURE) : []),
     ...(link ? wrap([run(link.url, "dim")], WIDTH) : []),
+  ];
+}
+
+function contentCreation(
+  highlights: string[],
+  platforms: {
+    name: string;
+    link?: { href: string; url: string };
+    note?: string;
+  }[]
+): Line[] {
+  const marker = run("- ", "dim");
+  return [
+    ...highlights.flatMap((item) =>
+      wrap([run(item)], MEASURE - 2).map((line, i) => [
+        i ? pad(2) : marker,
+        ...line,
+      ])
+    ),
+    ...platforms.flatMap((platform) => [
+      ...wrap(
+        [
+          run(platform.name, "bold"),
+          ...(platform.note ? [run(`  ${platform.note}`)] : []),
+        ],
+        MEASURE
+      ),
+      ...(platform.link ? wrap([run(platform.link.url, "dim")], WIDTH) : []),
+    ]),
   ];
 }
 

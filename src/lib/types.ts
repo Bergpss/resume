@@ -2,6 +2,20 @@ import type { StaticImageData } from "next/image";
 
 export type SocialIcon = "github" | "linkedin" | "x";
 
+export type ContentPlatformIcon = "x" | "douyin" | "xiaohongshu";
+
+export interface ContentPlatform {
+  name: string;
+  icon: ContentPlatformIcon;
+  url?: string;
+  note?: string;
+}
+
+export interface ContentCreationEntry {
+  highlights: string[];
+  platforms: ContentPlatform[];
+}
+
 export interface SocialLink {
   name: string;
   url: string;
@@ -58,4 +72,5 @@ export interface ResumeData {
   work: WorkEntry[];
   skills: string[];
   projects: Project[];
+  contentCreation: ContentCreationEntry[];
 }
