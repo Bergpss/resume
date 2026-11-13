@@ -1121,19 +1121,41 @@ const checks = [
         },
       ],
       [
-        `${locale}: language switch and print control exist and are print-hidden`,
+        `${locale}: language switch is compact, above the header, and print-hidden`,
         () => {
           const other = locale === "zh" ? "en" : "zh";
-          const controls = page.html.match(
-            /<div class="flex flex-wrap items-center justify-end[^"]*print:hidden[^"]*"/
+          const headerIndex = page.html.search(/<header\b/);
+          if (headerIndex < 0) return "no header";
+          const beforeHeader = page.html.slice(0, headerIndex);
+          const afterHeader = page.html.slice(headerIndex);
+          const controls = beforeHeader.match(
+            /<div class="mb-2 flex items-center justify-end print:hidden"/
           );
-          if (!controls) return "no print-hidden page controls";
-          if (!page.html.includes(`href="${localePath(other)}"`)) {
-            return `no link to ${localePath(other)}`;
+          if (!controls) {
+            return "no compact, right-aligned, print-hidden language row above the header";
           }
-          if (!page.html.includes(ui.print)) return "print label missing";
-          if (!ui.print.includes("PDF")) {
-            return "print label does not mention PDF";
+          const nav = beforeHeader.match(
+            /<nav\b[^>]*aria-label="[^"]*"[^>]*>[\s\S]*?<\/nav>/
+          )?.[0];
+          if (!nav) return "no language nav above the header";
+          if (!nav.includes(`href="${localePath(other)}"`)) {
+            return `no link to ${localePath(other)} above the header`;
+          }
+          if (!nav.includes(`href="${localePath(locale)}"`)) {
+            return `no link to ${localePath(locale)} above the header`;
+          }
+          if (!/\btext-xs\b/.test(nav)) return "language switch is not compact";
+          if (!/\bjustify-end\b/.test(controls[0])) {
+            return "language row is not right-aligned";
+          }
+          if (afterHeader.includes(`aria-label="${ui.language}"`)) {
+            return "a second language switch appears in or after the header";
+          }
+          const printButtons = [
+            ...page.html.matchAll(/<button\b[^>]*>[\s\S]*?<\/button>/g),
+          ].filter(([button]) => decode(button).includes(ui.print));
+          if (printButtons.length > 0) {
+            return "a visible print / save-as button is still rendered";
           }
         },
       ],
